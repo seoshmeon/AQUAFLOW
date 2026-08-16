@@ -11,10 +11,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -33,6 +32,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -52,15 +53,15 @@ fun HomeScreen(
     val accent = MaterialTheme.colorScheme.primary
     BoxWithConstraints(modifier.fillMaxSize()) {
         val wide = maxWidth >= 700.dp
-        val compact = maxHeight < 720.dp || maxWidth < 360.dp
-        val pagePadding = if (maxWidth < 360.dp) 16.dp else 24.dp
+        val narrow = maxWidth < 420.dp
+        val compact = maxHeight < 720.dp || narrow || LocalDensity.current.fontScale > 1.1f
+        val pagePadding = if (maxWidth < 340.dp) 16.dp else 24.dp
         Column(
             modifier = Modifier.align(Alignment.TopCenter)
                 .fillMaxWidth()
                 .widthIn(max = 980.dp)
                 .verticalScroll(rememberScrollState())
-                .statusBarsPadding()
-                .navigationBarsPadding()
+                .safeDrawingPadding()
                 .padding(horizontal = pagePadding, vertical = if (compact) 18.dp else 28.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -75,15 +76,16 @@ fun HomeScreen(
                     horizontalArrangement = Arrangement.spacedBy(34.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    HeroCopy(Modifier.weight(.9f))
-                    SessionOverview(settings, Modifier.weight(1.1f).height(250.dp))
+                    HeroCopy(compact = false, modifier = Modifier.weight(.9f))
+                    SessionOverview(settings, compact = false, modifier = Modifier.weight(1.1f).heightIn(min = 250.dp))
                 }
             } else {
-                HeroCopy()
-                Spacer(Modifier.height(if (compact) 24.dp else 42.dp))
+                HeroCopy(compact = compact)
+                Spacer(Modifier.height(if (compact) 20.dp else 42.dp))
                 SessionOverview(
                     settings = settings,
-                    modifier = Modifier.fillMaxWidth().height(if (compact) 210.dp else 238.dp),
+                    compact = compact,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = if (compact) 204.dp else 238.dp),
                 )
             }
 
@@ -111,10 +113,13 @@ fun HomeScreen(
 }
 
 @Composable
-private fun HeroCopy(modifier: Modifier = Modifier) {
+private fun HeroCopy(compact: Boolean, modifier: Modifier = Modifier) {
+    val headline = if (compact) {
+        MaterialTheme.typography.headlineLarge.copy(fontSize = 30.sp, lineHeight = 34.sp, letterSpacing = (-.7).sp)
+    } else MaterialTheme.typography.headlineLarge
     Column(modifier) {
-        Text("Спокойная сила", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Light)
-        Text("начинается с дыхания", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.SemiBold)
+        Text("Спокойная сила", style = headline, fontWeight = FontWeight.Light, maxLines = 1)
+        Text("начинается с дыхания", style = headline, fontWeight = FontWeight.SemiBold, maxLines = 2)
         Spacer(Modifier.height(12.dp))
         Text(
             "Мягкая практика задержки без цифр, гонки и лишнего напряжения.",
@@ -125,14 +130,23 @@ private fun HeroCopy(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun SessionOverview(settings: TrainingSettings, modifier: Modifier = Modifier) {
+private fun SessionOverview(settings: TrainingSettings, compact: Boolean, modifier: Modifier = Modifier) {
     val accent = MaterialTheme.colorScheme.primary
     NeumorphicPanel(modifier = modifier, shape = RoundedCornerShape(30.dp)) {
-        Column(Modifier.fillMaxSize().padding(26.dp), verticalArrangement = Arrangement.SpaceBetween) {
+        Column(
+            Modifier.fillMaxSize().padding(if (compact) 22.dp else 26.dp),
+            verticalArrangement = Arrangement.SpaceBetween,
+        ) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Column {
                     Text("СЕГОДНЯ", fontSize = 11.sp, letterSpacing = 2.sp, color = accent)
-                    Text("Комфортная сессия", fontWeight = FontWeight.SemiBold, fontSize = 20.sp)
+                    Text(
+                        "Комфортная сессия",
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = if (compact) 18.sp else 20.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
                 NeumorphicPanel(
                     modifier = Modifier.size(48.dp),
@@ -141,10 +155,18 @@ private fun SessionOverview(settings: TrainingSettings, modifier: Modifier = Mod
                     contentAlignment = Alignment.Center,
                 ) { Icon(Icons.Rounded.Air, null, tint = accent) }
             }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                SessionMetric("ПОДХОДЫ", settings.attemptCount.toString(), Modifier.weight(1f))
-                SessionMetric("ПОДГОТОВКА", formatDuration(settings.preparationDurationMillis), Modifier.weight(1f))
-                SessionMetric("ОТДЫХ", formatDuration(settings.recoveryDurationMillis), Modifier.weight(1f))
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(if (compact) 6.dp else 14.dp),
+            ) {
+                SessionMetric("ПОДХОДЫ", settings.attemptCount.toString(), compact, Modifier.weight(1f))
+                SessionMetric(
+                    if (compact) "ПОДГОТ." else "ПОДГОТОВКА",
+                    formatDuration(settings.preparationDurationMillis),
+                    compact,
+                    Modifier.weight(1f),
+                )
+                SessionMetric("ОТДЫХ", formatDuration(settings.recoveryDurationMillis), compact, Modifier.weight(1f))
             }
         }
     }
@@ -161,7 +183,13 @@ private fun StartAction(onClick: () -> Unit, modifier: Modifier = Modifier) {
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Rounded.PlayArrow, null, tint = MaterialTheme.colorScheme.onPrimary)
-            Text("  Начать тренировку", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.SemiBold)
+            Text(
+                "  Начать тренировку",
+                color = MaterialTheme.colorScheme.onPrimary,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }
@@ -176,16 +204,30 @@ private fun ProgressAction(onClick: () -> Unit, modifier: Modifier = Modifier) {
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.AutoMirrored.Rounded.ShowChart, null, tint = accent)
-            Text("  Мой прогресс", color = MaterialTheme.colorScheme.onSurface)
+            Text("  Мой прогресс", color = MaterialTheme.colorScheme.onSurface, maxLines = 1)
         }
     }
 }
 
 @Composable
-private fun SessionMetric(label: String, value: String, modifier: Modifier = Modifier) {
+private fun SessionMetric(label: String, value: String, compact: Boolean, modifier: Modifier = Modifier) {
     Column(modifier) {
-        Text(label, fontSize = 10.sp, letterSpacing = 1.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(value, fontSize = 26.sp, fontWeight = FontWeight.Light, color = MaterialTheme.colorScheme.onSurface)
+        Text(
+            label,
+            fontSize = if (compact) 8.sp else 10.sp,
+            letterSpacing = if (compact) .5.sp else 1.5.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            softWrap = false,
+            overflow = TextOverflow.Clip,
+        )
+        Text(
+            value,
+            fontSize = if (compact) 23.sp else 26.sp,
+            fontWeight = FontWeight.Light,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+        )
     }
 }
 
@@ -200,7 +242,7 @@ internal fun TrainingSettingSlider(
 ) {
     val accent = MaterialTheme.colorScheme.primary
     NeumorphicPanel(
-        modifier = Modifier.fillMaxWidth().height(126.dp),
+        modifier = Modifier.fillMaxWidth().heightIn(min = 126.dp),
         shape = RoundedCornerShape(26.dp),
     ) {
         Column(Modifier.fillMaxSize().padding(horizontal = 22.dp, vertical = 18.dp)) {

@@ -8,9 +8,9 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -24,6 +24,8 @@ import androidx.compose.material3.Switch
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.zenhold.app.domain.model.TrainingSettings
@@ -44,13 +46,13 @@ fun SettingsScreen(
     modifier: Modifier = Modifier,
 ) {
     BoxWithConstraints(modifier.fillMaxSize()) {
+        val compact = maxWidth < 420.dp || LocalDensity.current.fontScale > 1.1f
         val horizontalPadding = if (maxWidth < 360.dp) 16.dp else 24.dp
         Column(
             Modifier.align(androidx.compose.ui.Alignment.TopCenter)
                 .fillMaxWidth()
                 .widthIn(max = 820.dp)
-                .statusBarsPadding()
-                .navigationBarsPadding()
+                .safeDrawingPadding()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = horizontalPadding, vertical = 72.dp),
         ) {
@@ -60,10 +62,11 @@ fun SettingsScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(Modifier.height(40.dp))
-            ThemeModeSelector(selected = settings.themeMode, onSelected = onThemeModeChanged)
+            ThemeModeSelector(selected = settings.themeMode, compact = compact, onSelected = onThemeModeChanged)
             Spacer(Modifier.height(28.dp))
             PreparationSelector(
                 selectedMillis = settings.preparationDurationMillis,
+                compact = compact,
                 onSelectedSeconds = onPreparationSecondsChanged,
             )
             Spacer(Modifier.height(28.dp))
@@ -113,10 +116,14 @@ fun SettingsScreen(
 }
 
 @Composable
-private fun PreparationSelector(selectedMillis: Long, onSelectedSeconds: (Int) -> Unit) {
+private fun PreparationSelector(
+    selectedMillis: Long,
+    compact: Boolean,
+    onSelectedSeconds: (Int) -> Unit,
+) {
     val options = listOf(15, 30, 45, 60)
     NeumorphicPanel(
-        modifier = Modifier.fillMaxWidth().height(126.dp),
+        modifier = Modifier.fillMaxWidth().heightIn(min = 126.dp),
         shape = RoundedCornerShape(26.dp),
     ) {
         Column(Modifier.padding(horizontal = 22.dp, vertical = 18.dp)) {
@@ -134,7 +141,7 @@ private fun PreparationSelector(selectedMillis: Long, onSelectedSeconds: (Int) -
                             inactiveContainerColor = MaterialTheme.colorScheme.surface,
                             inactiveContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                         ),
-                    ) { Text("$seconds с") }
+                    ) { Text("$seconds с", fontSize = if (compact) 11.sp else 14.sp, maxLines = 1) }
                 }
             }
         }
@@ -166,11 +173,12 @@ private fun PreferenceToggle(
 @Composable
 private fun ThemeModeSelector(
     selected: AppThemeMode,
+    compact: Boolean,
     onSelected: (AppThemeMode) -> Unit,
 ) {
     val modes = AppThemeMode.entries
     NeumorphicPanel(
-        modifier = Modifier.fillMaxWidth().height(126.dp),
+        modifier = Modifier.fillMaxWidth().heightIn(min = 126.dp),
         shape = RoundedCornerShape(26.dp),
     ) {
         Column(Modifier.padding(horizontal = 22.dp, vertical = 18.dp)) {
@@ -195,6 +203,8 @@ private fun ThemeModeSelector(
                                 AppThemeMode.Light -> "Светлая"
                                 AppThemeMode.Dark -> "Тёмная"
                             },
+                            fontSize = if (compact) 11.sp else 14.sp,
+                            maxLines = 1,
                         )
                     }
                 }

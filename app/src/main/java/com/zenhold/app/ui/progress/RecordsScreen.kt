@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -89,7 +90,7 @@ private fun RecordRow(record: BreathHoldRecord) {
             .format(Date(record.timestamp))
     }
     NeumorphicPanel(
-        modifier = Modifier.fillMaxWidth().height(if (record.comfortRating == 0) 92.dp else 108.dp),
+        modifier = Modifier.fillMaxWidth().heightIn(min = if (record.comfortRating == 0) 92.dp else 108.dp),
         shape = RoundedCornerShape(24.dp),
     ) {
         Row(

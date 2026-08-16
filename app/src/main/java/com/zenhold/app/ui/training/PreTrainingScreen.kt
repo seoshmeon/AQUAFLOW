@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -106,7 +107,7 @@ fun PreTrainingScreen(
             NeumorphicAction(
                 onClick = { onStart(SessionCheckIn(energy, stress)) },
                 enabled = safetyConfirmed,
-                modifier = Modifier.fillMaxWidth().height(58.dp),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 58.dp),
                 shape = RoundedCornerShape(7.dp),
                 color = if (safetyConfirmed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
             ) {
@@ -116,7 +117,7 @@ fun PreTrainingScreen(
                 }
             }
             Spacer(Modifier.height(10.dp))
-            NeumorphicAction(onClick = onBack, modifier = Modifier.fillMaxWidth().height(52.dp)) {
+            NeumorphicAction(onClick = onBack, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
                 Text("Вернуться")
             }
         }

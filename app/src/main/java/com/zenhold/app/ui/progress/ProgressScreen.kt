@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -123,7 +124,7 @@ fun ProgressScreen(state: ProgressUiState, onBack: () -> Unit, modifier: Modifie
             )
             Spacer(Modifier.height(12.dp))
             LazyRow(
-                modifier = Modifier.fillMaxWidth().height(172.dp),
+                modifier = Modifier.fillMaxWidth().height(190.dp),
                 contentPadding = PaddingValues(horizontal = 2.dp, vertical = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
             ) {
@@ -151,7 +152,7 @@ fun ProgressScreen(state: ProgressUiState, onBack: () -> Unit, modifier: Modifie
 @Composable
 private fun MonthCard(month: MonthPoint) {
     NeumorphicPanel(
-        modifier = Modifier.width(224.dp).height(158.dp),
+        modifier = Modifier.width(224.dp).heightIn(min = 158.dp),
         shape = RoundedCornerShape(24.dp),
         elevation = 9.dp,
     ) {

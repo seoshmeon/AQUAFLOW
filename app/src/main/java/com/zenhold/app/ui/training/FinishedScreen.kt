@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -60,7 +61,7 @@ fun FinishedScreen(state: TrainingState.Finished, onDone: () -> Unit, modifier: 
         Spacer(Modifier.height(36.dp))
         NeumorphicAction(
             onClick = onDone,
-            modifier = Modifier.fillMaxWidth().height(56.dp),
+            modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
             shape = RoundedCornerShape(7.dp),
             color = accent,
         ) { Text("Готово", color = androidx.compose.ui.graphics.Color.White, fontWeight = FontWeight.SemiBold) }

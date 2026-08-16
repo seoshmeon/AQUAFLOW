@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -75,7 +76,7 @@ fun PreparationScreen(
             )
             NeumorphicAction(
                 onClick = onSkip,
-                modifier = Modifier.fillMaxWidth().padding(top = 12.dp).height(48.dp),
+                modifier = Modifier.fillMaxWidth().padding(top = 12.dp).heightIn(min = 48.dp),
                 shape = RoundedCornerShape(7.dp),
             ) { Text("Пропустить подготовку") }
         }
