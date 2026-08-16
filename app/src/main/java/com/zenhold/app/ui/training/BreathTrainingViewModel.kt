@@ -175,7 +175,7 @@ class BreathTrainingViewModel @Inject constructor(
     }
 
     companion object {
-        const val PREPARATION_MILLIS = 180_000L
+        const val PREPARATION_MILLIS = 30_000L
         private const val TICK_MILLIS = 100L
         private const val HIDDEN_TIMER_TICK_MILLIS = 50L
     }
