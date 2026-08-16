@@ -11,6 +11,7 @@ import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import com.zenhold.app.R
 import com.zenhold.app.domain.model.CueStyle
+import com.zenhold.app.domain.model.VibrationStrength
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.BufferedOutputStream
 import java.io.File
@@ -32,6 +33,7 @@ class Media3TrainingAudioController @Inject constructor(
     private var cueVolume = 0.7f
     private var vibrationEnabled = true
     private var cueStyle = CueStyle.Bell
+    private var vibrationStrength = VibrationStrength.Medium
     private val musicPlayer = ExoPlayer.Builder(context).build().apply {
         repeatMode = Player.REPEAT_MODE_ONE
         volume = PREPARATION_MUSIC_VOLUME
@@ -49,11 +51,13 @@ class Media3TrainingAudioController @Inject constructor(
         cueVolumePercent: Int,
         vibrationEnabled: Boolean,
         cueStyle: CueStyle,
+        vibrationStrength: VibrationStrength,
     ) {
         musicVolume = musicVolumePercent.coerceIn(0, 100) / 100f
         cueVolume = cueVolumePercent.coerceIn(0, 100) / 100f
         this.vibrationEnabled = vibrationEnabled
         this.cueStyle = cueStyle
+        this.vibrationStrength = vibrationStrength
         musicPlayer.volume = musicVolume
         cuePlayer.volume = cueVolume
     }
@@ -113,7 +117,11 @@ class Media3TrainingAudioController @Inject constructor(
     private fun vibrate() {
         if (!vibrationEnabled) return
         val vibrator = context.getSystemService<Vibrator>() ?: return
-        val pattern = longArrayOf(0, 80, 60, 140)
+        val pattern = when (vibrationStrength) {
+            VibrationStrength.Gentle -> longArrayOf(0, 45, 55, 70)
+            VibrationStrength.Medium -> longArrayOf(0, 80, 60, 140)
+            VibrationStrength.Strong -> longArrayOf(0, 130, 70, 220)
+        }
         vibrator.vibrate(VibrationEffect.createWaveform(pattern, -1))
     }
 

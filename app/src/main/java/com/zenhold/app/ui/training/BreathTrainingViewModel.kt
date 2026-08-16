@@ -72,6 +72,7 @@ class BreathTrainingViewModel @Inject constructor(
             cueVolumePercent = settings.cueVolumePercent,
             vibrationEnabled = settings.vibrationEnabled,
             cueStyle = settings.cueStyle,
+            vibrationStrength = settings.vibrationStrength,
         )
         checkIn = sessionCheckIn
         currentAttempt = 1
@@ -124,6 +125,7 @@ class BreathTrainingViewModel @Inject constructor(
                 settings.cueVolumePercent,
                 settings.vibrationEnabled,
                 settings.cueStyle,
+                settings.vibrationStrength,
             )
             checkIn = SessionCheckIn(session.energyLevel, session.stressLevel)
             sessionId = session.sessionId

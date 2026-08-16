@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ShowChart
 import androidx.compose.material.icons.rounded.Home
@@ -19,6 +21,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -28,6 +32,40 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.unit.dp
+
+enum class MainNavigationItem { Home, Progress, Records }
+
+@Composable
+fun AppBottomNavigation(
+    selected: MainNavigationItem,
+    onHome: () -> Unit,
+    onProgress: () -> Unit,
+    onRecords: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    NavigationBar(
+        modifier = modifier.fillMaxWidth().navigationBarsPadding(),
+        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = .96f),
+        tonalElevation = 0.dp,
+    ) {
+        listOf(
+            Triple(MainNavigationItem.Home, "Главная", Icons.Rounded.Home),
+            Triple(MainNavigationItem.Progress, "Прогресс", Icons.AutoMirrored.Rounded.ShowChart),
+            Triple(MainNavigationItem.Records, "История", Icons.Rounded.History),
+        ).forEach { (item, label, icon) ->
+            NavigationBarItem(
+                selected = selected == item,
+                onClick = when (item) {
+                    MainNavigationItem.Home -> onHome
+                    MainNavigationItem.Progress -> onProgress
+                    MainNavigationItem.Records -> onRecords
+                },
+                icon = { Icon(icon, contentDescription = label) },
+                label = { Text(label) },
+            )
+        }
+    }
+}
 
 @Composable
 fun AppNavigationMenu(

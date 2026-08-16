@@ -9,6 +9,7 @@ import com.zenhold.app.data.backup.ImportMode
 import com.zenhold.app.domain.model.TrainingSettings
 import com.zenhold.app.domain.model.AppThemeMode
 import com.zenhold.app.domain.model.CueStyle
+import com.zenhold.app.domain.model.VibrationStrength
 import com.zenhold.app.domain.repository.SettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -67,6 +68,9 @@ class HomeViewModel @Inject constructor(
     fun setVibrationEnabled(value: Boolean) =
         update(settings.value.copy(vibrationEnabled = value))
 
+    fun setVibrationStrength(value: VibrationStrength) =
+        update(settings.value.copy(vibrationStrength = value))
+
     fun setReduceMotion(value: Boolean) =
         update(settings.value.copy(reduceMotion = value))
 
@@ -76,6 +80,7 @@ class HomeViewModel @Inject constructor(
     fun setThemeMode(value: AppThemeMode) = update(settings.value.copy(themeMode = value))
 
     fun completeOnboarding() = update(settings.value.copy(onboardingCompleted = true))
+    fun restartOnboarding() = update(settings.value.copy(onboardingCompleted = false))
 
     fun exportJson(uri: Uri) = runDataAction {
         val result = dataBackupManager.exportJson(uri)

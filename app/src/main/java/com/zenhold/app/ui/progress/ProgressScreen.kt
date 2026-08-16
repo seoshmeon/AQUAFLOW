@@ -1,6 +1,8 @@
 package com.zenhold.app.ui.progress
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -32,8 +34,14 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -48,6 +56,9 @@ import com.zenhold.app.ui.components.NeumorphicPanel
 import com.zenhold.app.ui.components.NeumorphicAction
 import com.zenhold.app.ui.util.formatDuration
 import java.time.YearMonth
+import kotlin.math.roundToInt
+
+enum class ChartMetric { Maximum, Average, Comfortable }
 
 @Composable
 fun ProgressScreen(
@@ -57,6 +68,8 @@ fun ProgressScreen(
     modifier: Modifier = Modifier,
 ) {
     val accent = MaterialTheme.colorScheme.primary
+    var chartMetric by remember { mutableStateOf(ChartMetric.Maximum) }
+    var selectedPoint by remember(state.sessions, chartMetric) { mutableIntStateOf(-1) }
     BoxWithConstraints(modifier.fillMaxSize()) {
       val compactWidth = maxWidth < 420.dp
       Column(
@@ -112,7 +125,9 @@ fun ProgressScreen(
         ) {
             Column(Modifier.padding(20.dp)) {
                 Text("Динамика по тренировкам", fontWeight = FontWeight.SemiBold)
-                Text("Максимум и среднее", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+                Text("Нажмите на точку, чтобы увидеть значение", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+                Spacer(Modifier.height(12.dp))
+                ChartMetricSelector(chartMetric) { chartMetric = it }
                 Spacer(Modifier.height(20.dp))
                 if (state.sessions.isEmpty()) {
                     Column(
@@ -124,12 +139,53 @@ fun ProgressScreen(
                         Text("Завершите первую тренировку", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface.copy(.38f))
                     }
                 } else {
-                    LineChart(points = state.sessions, modifier = Modifier.fillMaxWidth().height(220.dp))
+                    LineChart(
+                        points = state.sessions,
+                        metric = chartMetric,
+                        selectedIndex = selectedPoint,
+                        onPointSelected = { selectedPoint = it },
+                        modifier = Modifier.fillMaxWidth().height(220.dp),
+                    )
                 }
-                Spacer(Modifier.height(12.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Legend(accent, "Максимум")
-                    Legend(MaterialTheme.colorScheme.onSurface.copy(alpha = .52f), "Среднее")
+                state.sessions.getOrNull(selectedPoint)?.let { point ->
+                    val value = when (chartMetric) {
+                        ChartMetric.Maximum -> point.maximumMillis
+                        ChartMetric.Average -> point.averageMillis
+                        ChartMetric.Comfortable -> point.comfortableMillis
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Тренировка ${selectedPoint + 1}: ${if (value > 0L) formatDuration(value) else "нет оценки"}",
+                        color = accent,
+                        fontWeight = FontWeight.Medium,
+                    )
+                }
+            }
+        }
+        if (state.insights.isNotEmpty()) {
+            Spacer(Modifier.height(16.dp))
+            Text("Наблюдения", fontWeight = FontWeight.SemiBold)
+            Text("Нейтральные выводы по вашей истории", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+            Spacer(Modifier.height(10.dp))
+            state.insights.forEach { insight ->
+                NeumorphicPanel(Modifier.fillMaxWidth().padding(bottom = 10.dp), shape = RoundedCornerShape(20.dp), elevation = 7.dp) {
+                    Text(insight, Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
+        if (state.personalRecords.isNotEmpty()) {
+            Spacer(Modifier.height(8.dp))
+            Text("Личные ориентиры", fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(10.dp))
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                items(state.personalRecords, key = { it.title }) { record ->
+                    NeumorphicPanel(Modifier.width(220.dp).heightIn(min = 112.dp), shape = RoundedCornerShape(22.dp)) {
+                        Column(Modifier.padding(16.dp)) {
+                            Text(record.title, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                            Text(record.value, color = accent, fontSize = 25.sp, fontWeight = FontWeight.Light)
+                            Text(record.description, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
                 }
             }
         }
@@ -223,6 +279,7 @@ private fun MonthCalendar(state: ProgressUiState) {
     val activity = state.calendarDays.associateBy { it.dayOfMonth }
     val offset = month.atDay(1).dayOfWeek.value - 1
     val cells = List<Int?>(offset) { null } + (1..month.lengthOfMonth()).map { it }
+    var selectedDay by remember(state.calendarDays) { mutableIntStateOf(0) }
     NeumorphicPanel(Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp), elevation = 9.dp) {
         Column(Modifier.padding(18.dp)) {
             Text("Календарь · ${state.calendarMonthLabel}", fontWeight = FontWeight.SemiBold)
@@ -243,7 +300,8 @@ private fun MonthCalendar(state: ProgressUiState) {
                     (week + List(7 - week.size) { null }).forEach { day ->
                         val trained = day?.let(activity::get)
                         Box(
-                            Modifier.weight(1f).height(34.dp),
+                            Modifier.weight(1f).height(34.dp)
+                                .clickable(enabled = trained != null) { selectedDay = day ?: 0 },
                             contentAlignment = Alignment.Center,
                         ) {
                             if (day != null) {
@@ -263,6 +321,14 @@ private fun MonthCalendar(state: ProgressUiState) {
                         }
                     }
                 }
+            }
+            activity[selectedDay]?.let { day ->
+                Spacer(Modifier.height(10.dp))
+                Text(
+                    "$selectedDay число · ${day.sessionCount} сесс. · лучшее ${formatDuration(day.bestMillis)}",
+                    color = accent,
+                    fontSize = 12.sp,
+                )
             }
         }
     }
@@ -311,6 +377,9 @@ private fun MonthCard(month: MonthPoint) {
                 fontSize = 11.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = .72f),
             )
+            if (month.comfortableAverageMillis > 0L) {
+                Text("Комфортное ${formatDuration(month.comfortableAverageMillis)}", fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
+            }
         }
     }
 }
@@ -334,18 +403,40 @@ private fun Legend(color: Color, text: String) {
 }
 
 @Composable
-fun LineChart(points: List<SessionPoint>, modifier: Modifier = Modifier) {
-    val maxValue = points.maxOfOrNull { it.maximumMillis }?.coerceAtLeast(1L) ?: 1L
+fun LineChart(
+    points: List<SessionPoint>,
+    metric: ChartMetric = ChartMetric.Maximum,
+    selectedIndex: Int = -1,
+    onPointSelected: (Int) -> Unit = {},
+    modifier: Modifier = Modifier,
+) {
+    val selector: (SessionPoint) -> Long = when (metric) {
+        ChartMetric.Maximum -> { point -> point.maximumMillis }
+        ChartMetric.Average -> { point -> point.averageMillis }
+        ChartMetric.Comfortable -> { point -> point.comfortableMillis }
+    }
+    val maxValue = points.maxOfOrNull(selector)?.coerceAtLeast(1L) ?: 1L
     val gridColor = MaterialTheme.colorScheme.onSurface.copy(alpha = .08f)
-    val averageColor = MaterialTheme.colorScheme.onSurface.copy(alpha = .52f)
     val accent = MaterialTheme.colorScheme.primary
+    val selectedColor = MaterialTheme.colorScheme.secondary
     val lastPoint = points.lastOrNull()
     val chartDescription = if (lastPoint == null) {
         "Данных для графика пока нет"
     } else {
         "График за ${points.size} тренировок. Последний максимум ${formatDuration(lastPoint.maximumMillis)}, среднее ${formatDuration(lastPoint.averageMillis)}"
     }
-    Canvas(modifier.semantics { contentDescription = chartDescription }) {
+    Canvas(
+        modifier.semantics { contentDescription = chartDescription }
+            .pointerInput(points, metric) {
+                detectTapGestures { offset ->
+                    if (points.isNotEmpty()) {
+                        val index = if (points.size == 1) 0 else
+                            ((offset.x / size.width) * points.lastIndex).roundToInt().coerceIn(0, points.lastIndex)
+                        onPointSelected(index)
+                    }
+                }
+            },
+    ) {
         val horizontalPadding = 8.dp.toPx()
         val verticalPadding = 12.dp.toPx()
         val chartWidth = size.width - horizontalPadding * 2
@@ -366,10 +457,38 @@ fun LineChart(points: List<SessionPoint>, modifier: Modifier = Modifier) {
             }
         }
 
-        drawPath(pathFor { it.averageMillis }, averageColor, style = Stroke(2.dp.toPx(), cap = StrokeCap.Round))
-        drawPath(pathFor { it.maximumMillis }, accent, style = Stroke(3.dp.toPx(), cap = StrokeCap.Round))
+        drawPath(pathFor(selector), accent, style = Stroke(3.dp.toPx(), cap = StrokeCap.Round))
         points.forEachIndexed { index, point ->
-            drawCircle(accent, 4.dp.toPx(), Offset(xAt(index), yAt(point.maximumMillis)))
+            val value = selector(point)
+            drawCircle(
+                if (index == selectedIndex) selectedColor else accent,
+                if (index == selectedIndex) 7.dp.toPx() else 4.dp.toPx(),
+                Offset(xAt(index), yAt(value)),
+            )
+        }
+    }
+}
+
+@Composable
+private fun ChartMetricSelector(selected: ChartMetric, onSelected: (ChartMetric) -> Unit) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        ChartMetric.entries.forEach { metric ->
+            NeumorphicAction(
+                onClick = { onSelected(metric) },
+                modifier = Modifier.weight(1f).heightIn(min = 42.dp),
+                color = if (selected == metric) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
+            ) {
+                Text(
+                    when (metric) {
+                        ChartMetric.Maximum -> "Максимум"
+                        ChartMetric.Average -> "Среднее"
+                        ChartMetric.Comfortable -> "Комфорт"
+                    },
+                    color = if (selected == metric) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                    fontSize = 11.sp,
+                    maxLines = 1,
+                )
+            }
         }
     }
 }

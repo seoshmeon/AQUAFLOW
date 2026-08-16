@@ -8,12 +8,14 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Surface
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -37,6 +39,8 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.zenhold.app.domain.model.TrainingState
 import com.zenhold.app.domain.model.AppThemeMode
 import com.zenhold.app.ui.components.AppNavigationMenu
+import com.zenhold.app.ui.components.AppBottomNavigation
+import com.zenhold.app.ui.components.MainNavigationItem
 import com.zenhold.app.ui.components.TrainingMenu
 import com.zenhold.app.ui.components.WaveBackdrop
 import com.zenhold.app.ui.home.HomeScreen
@@ -139,7 +143,8 @@ private fun ZenHoldApp(
                 if (trainingState !is TrainingState.Holding) {
                     WaveBackdrop(Modifier.fillMaxSize(), reduceMotion = settings.reduceMotion)
                 }
-                when (destination) {
+                Crossfade(targetState = destination, label = "mainNavigation") { activeDestination ->
+                  when (activeDestination) {
                     Destination.Onboarding -> OnboardingScreen(
                         onComplete = {
                             homeViewModel.completeOnboarding()
@@ -156,6 +161,7 @@ private fun ZenHoldApp(
                             destination = Destination.Training
                         },
                         onDiscardSession = trainingViewModel::discardResumableSession,
+                        modifier = Modifier.padding(bottom = 72.dp),
                     )
                     Destination.Settings -> SettingsScreen(
                         settings = settings,
@@ -168,6 +174,7 @@ private fun ZenHoldApp(
                         onCueVolumeChanged = homeViewModel::setCueVolumePercent,
                         onCueStyleChanged = homeViewModel::setCueStyle,
                         onVibrationChanged = homeViewModel::setVibrationEnabled,
+                        onVibrationStrengthChanged = homeViewModel::setVibrationStrength,
                         onReduceMotionChanged = homeViewModel::setReduceMotion,
                         onFullScreenHoldGestureChanged = homeViewModel::setFullScreenHoldGesture,
                         onThemeModeChanged = homeViewModel::setThemeMode,
@@ -180,6 +187,7 @@ private fun ZenHoldApp(
                         onCancelImport = homeViewModel::cancelImport,
                         onClearData = homeViewModel::clearAllData,
                         onDismissDataMessage = homeViewModel::dismissDataMessage,
+                        onRestartOnboarding = homeViewModel::restartOnboarding,
                     )
                     Destination.SessionPlan -> PreTrainingScreen(
                         settings = settings,
@@ -193,10 +201,12 @@ private fun ZenHoldApp(
                         state = progressState,
                         onPeriodSelected = progressViewModel::selectPeriod,
                         onBack = { destination = Destination.Home },
+                        modifier = Modifier.padding(bottom = 72.dp),
                     )
                     Destination.Records -> RecordsScreen(
                         sessions = progressState.sessionSummaries,
                         onSaveNote = progressViewModel::saveSessionNote,
+                        modifier = Modifier.padding(bottom = 72.dp),
                     )
                     Destination.Safety -> SafetyScreen()
                     Destination.Training -> when (val state = trainingState) {
@@ -234,6 +244,7 @@ private fun ZenHoldApp(
                             },
                         )
                     }
+                  }
                 }
 
                 if (destination == Destination.Training) {
@@ -273,6 +284,20 @@ private fun ZenHoldApp(
                         onRecords = { destination = Destination.Records },
                         onSafety = { destination = Destination.Safety },
                         modifier = Modifier.align(Alignment.TopEnd),
+                    )
+                }
+
+                if (destination == Destination.Home || destination == Destination.Progress || destination == Destination.Records) {
+                    AppBottomNavigation(
+                        selected = when (destination) {
+                            Destination.Progress -> MainNavigationItem.Progress
+                            Destination.Records -> MainNavigationItem.Records
+                            else -> MainNavigationItem.Home
+                        },
+                        onHome = { destination = Destination.Home },
+                        onProgress = { destination = Destination.Progress },
+                        onRecords = { destination = Destination.Records },
+                        modifier = Modifier.align(Alignment.BottomCenter),
                     )
                 }
 

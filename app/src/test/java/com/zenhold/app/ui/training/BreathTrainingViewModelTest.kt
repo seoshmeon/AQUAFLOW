@@ -6,6 +6,7 @@ import com.zenhold.app.data.local.TrainingSessionEntity
 import com.zenhold.app.domain.model.TrainingSettings
 import com.zenhold.app.domain.model.TrainingState
 import com.zenhold.app.domain.model.CueStyle
+import com.zenhold.app.domain.model.VibrationStrength
 import com.zenhold.app.domain.repository.RecordRepository
 import com.zenhold.app.util.ElapsedRealtimeClock
 import kotlinx.coroutines.Dispatchers
@@ -216,6 +217,7 @@ private class FakeAudioController : TrainingAudioController {
         cueVolumePercent: Int,
         vibrationEnabled: Boolean,
         cueStyle: CueStyle,
+        vibrationStrength: VibrationStrength,
     ) = Unit
     override suspend fun startPreparationMusic() = Unit
     override fun stopPreparationMusic() = Unit

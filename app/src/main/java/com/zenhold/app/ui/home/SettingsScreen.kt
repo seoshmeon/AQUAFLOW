@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import com.zenhold.app.domain.model.TrainingSettings
 import com.zenhold.app.domain.model.AppThemeMode
 import com.zenhold.app.domain.model.CueStyle
+import com.zenhold.app.domain.model.VibrationStrength
 import com.zenhold.app.ui.components.NeumorphicPanel
 import com.zenhold.app.ui.components.NeumorphicAction
 import com.zenhold.app.ui.util.formatDuration
@@ -63,6 +64,7 @@ fun SettingsScreen(
     onCueVolumeChanged: (Int) -> Unit,
     onCueStyleChanged: (CueStyle) -> Unit,
     onVibrationChanged: (Boolean) -> Unit,
+    onVibrationStrengthChanged: (VibrationStrength) -> Unit,
     onReduceMotionChanged: (Boolean) -> Unit,
     onFullScreenHoldGestureChanged: (Boolean) -> Unit,
     onThemeModeChanged: (AppThemeMode) -> Unit,
@@ -75,6 +77,7 @@ fun SettingsScreen(
     onCancelImport: () -> Unit,
     onClearData: () -> Unit,
     onDismissDataMessage: () -> Unit,
+    onRestartOnboarding: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val exportJson = rememberLauncherForActivityResult(
@@ -138,6 +141,10 @@ fun SettingsScreen(
                 checked = settings.preparationMusicEnabled,
                 onChecked = onPreparationMusicChanged,
             )
+            if (settings.vibrationEnabled) {
+                Spacer(Modifier.height(16.dp))
+                VibrationStrengthSelector(settings.vibrationStrength, onVibrationStrengthChanged)
+            }
             Spacer(Modifier.height(16.dp))
             PreferenceToggle(
                 title = "Музыка во время задержки",
@@ -197,6 +204,8 @@ fun SettingsScreen(
                 onImportJson = { importJson.launch(arrayOf("application/json", "text/plain")) },
                 onClearData = { confirmClear = true },
             )
+            Spacer(Modifier.height(18.dp))
+            DataAction("Повторить знакомство и правила безопасности", onRestartOnboarding)
             Spacer(Modifier.height(32.dp))
         }
     }
@@ -248,6 +257,34 @@ fun SettingsScreen(
             },
             dismissButton = { TextButton(onClick = onCancelImport) { Text("Отмена") } },
         )
+    }
+}
+
+@Composable
+private fun VibrationStrengthSelector(
+    selected: VibrationStrength,
+    onSelected: (VibrationStrength) -> Unit,
+) {
+    NeumorphicPanel(Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp)) {
+        Column(Modifier.padding(horizontal = 22.dp, vertical = 18.dp)) {
+            Text("Интенсивность вибрации", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(12.dp))
+            SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+                VibrationStrength.entries.forEach { strength ->
+                    SegmentedButton(
+                        selected = selected == strength,
+                        onClick = { onSelected(strength) },
+                        shape = RoundedCornerShape(7.dp),
+                    ) {
+                        Text(when (strength) {
+                            VibrationStrength.Gentle -> "Мягкая"
+                            VibrationStrength.Medium -> "Средняя"
+                            VibrationStrength.Strong -> "Сильная"
+                        }, maxLines = 1)
+                    }
+                }
+            }
+        }
     }
 }
 

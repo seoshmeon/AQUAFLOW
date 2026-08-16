@@ -52,6 +52,7 @@ data class SessionPoint(
     val timestamp: Long,
     val averageMillis: Long,
     val maximumMillis: Long,
+    val comfortableMillis: Long = 0L,
 )
 
 data class MonthPoint(
@@ -61,7 +62,10 @@ data class MonthPoint(
     val maximumMillis: Long,
     val attemptCount: Int,
     val sessionCount: Int,
+    val comfortableAverageMillis: Long = 0L,
 )
+
+data class PersonalRecord(val title: String, val value: String, val description: String)
 
 data class ProgressUiState(
     val sessions: List<SessionPoint> = emptyList(),
@@ -77,6 +81,8 @@ data class ProgressUiState(
     val calendarDays: List<CalendarDay> = emptyList(),
     val achievements: List<Achievement> = emptyList(),
     val sessionSummaries: List<SessionSummary> = emptyList(),
+    val personalRecords: List<PersonalRecord> = emptyList(),
+    val insights: List<String> = emptyList(),
 )
 
 @HiltViewModel
@@ -149,6 +155,9 @@ internal fun buildProgressState(
                     timestamp = attempts.minOf { it.timestamp },
                     averageMillis = attempts.map { it.holdDurationMillis }.average().toLong(),
                     maximumMillis = attempts.maxOf { it.holdDurationMillis },
+                    comfortableMillis = attempts.filter { it.comfortRating in 1..2 }
+                        .takeIf { it.isNotEmpty() }
+                        ?.map { it.holdDurationMillis }?.average()?.toLong() ?: 0L,
                 )
             }
             .sortedBy { it.timestamp }
@@ -162,6 +171,9 @@ internal fun buildProgressState(
                 maximumMillis = attempts.maxOf { it.holdDurationMillis },
                 attemptCount = attempts.size,
                 sessionCount = attempts.map { it.sessionId }.distinct().size,
+                comfortableAverageMillis = attempts.filter { it.comfortRating in 1..2 }
+                    .takeIf { it.isNotEmpty() }
+                    ?.map { it.holdDurationMillis }?.average()?.toLong() ?: 0L,
             )
         }.sortedBy { it.yearMonth }
         val comfortableRecords = records.filter { it.comfortRating == 1 || it.comfortRating == 2 }
@@ -219,6 +231,52 @@ internal fun buildProgressState(
             Achievement("Комфорт прежде всего", "Отметить 5 комфортных подходов", comfortableCount >= 5),
             Achievement("Ровное дыхание", "Три стабильных подхода в одной сессии", stableSession),
         )
+        val dateFormatter = DateTimeFormatter.ofPattern("d MMM yyyy", Locale.forLanguageTag("ru-RU"))
+        val bestRecord = records.maxBy { it.holdDurationMillis }
+        val currentMonthRecords = records.filter {
+            YearMonth.from(Instant.ofEpochMilli(it.timestamp).atZone(zone)) == currentMonth
+        }
+        val mostStable = allSessions.filter { it.attempts.size >= 3 }.minByOrNull { summary ->
+            val min = summary.attempts.minOf { it.holdDurationMillis }
+            (summary.maximumMillis - min).toDouble() / summary.maximumMillis.coerceAtLeast(1L)
+        }
+        val mostComfortable = allSessions.filter { summary ->
+            summary.attempts.any { it.comfortRating in 1..2 }
+        }.maxByOrNull { summary -> summary.attempts.count { it.comfortRating in 1..2 } }
+        val personalRecords = buildList {
+            add(PersonalRecord("Абсолютный рекорд", formatMillis(bestRecord.holdDurationMillis),
+                Instant.ofEpochMilli(bestRecord.timestamp).atZone(zone).format(dateFormatter)))
+            currentMonthRecords.maxByOrNull { it.holdDurationMillis }?.let {
+                add(PersonalRecord("Лучшее месяца", formatMillis(it.holdDurationMillis),
+                    Instant.ofEpochMilli(it.timestamp).atZone(zone).format(dateFormatter)))
+            }
+            mostStable?.let { add(PersonalRecord("Самая ровная серия", "${it.attempts.size} подхода", "Разброс результатов минимален")) }
+            mostComfortable?.let {
+                add(PersonalRecord("Комфортная сессия", "${it.attempts.count { a -> a.comfortRating in 1..2 }} подхода", "Оценены как легко или комфортно"))
+            }
+        }
+        val insights = buildList {
+            comparison?.let { value ->
+                add(if (value >= 0f) "Среднее выбранного периода выросло на ${value.toInt()}%."
+                else "Среднее выбранного периода изменилось на ${value.toInt()}% — ориентируйтесь прежде всего на комфорт.")
+            }
+            val calm = records.filter { it.stressLevel <= 2 }
+            val tense = records.filter { it.stressLevel >= 4 }
+            if (calm.size >= 3 && tense.size >= 3) {
+                val calmAverage = calm.map { it.holdDurationMillis }.average()
+                val tenseAverage = tense.map { it.holdDurationMillis }.average()
+                add(if (calmAverage >= tenseAverage) "При низком напряжении результаты в среднем стабильнее и выше."
+                else "Уровень напряжения пока не показывает устойчивой связи с результатом.")
+            }
+            if (allSessions.size >= 4) {
+                val recent = allSessions.take(3).flatMap { it.attempts }.map { it.holdDurationMillis }
+                val earlier = allSessions.drop(3).take(3).flatMap { it.attempts }.map { it.holdDurationMillis }
+                if (recent.isNotEmpty() && earlier.isNotEmpty()) {
+                    add("Последние сессии: среднее ${formatMillis(recent.average().toLong())}; ранее — ${formatMillis(earlier.average().toLong())}.")
+                }
+            }
+            if (isEmpty()) add("Добавьте ещё несколько комфортных сессий — здесь появятся нейтральные наблюдения по вашей практике.")
+        }
         return ProgressUiState(
             sessions = sessions,
             months = months,
@@ -242,7 +300,14 @@ internal fun buildProgressState(
             calendarDays = calendarDays,
             achievements = achievements,
             sessionSummaries = allSessions,
+            personalRecords = personalRecords,
+            insights = insights,
         )
+}
+
+private fun formatMillis(value: Long): String {
+    val totalSeconds = value / 1_000L
+    return "${totalSeconds / 60}:${(totalSeconds % 60).toString().padStart(2, '0')}"
 }
 
 private fun defaultAchievements() = listOf(

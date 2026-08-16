@@ -8,7 +8,7 @@ plugins {
     id("com.google.dagger.hilt.android")
 }
 
-val appVersionName = "1.7.0"
+val appVersionName = "2.0.0"
 val releasePropertiesFile = rootProject.file("keystore.properties")
 val releaseProperties = Properties().apply {
     if (releasePropertiesFile.exists()) releasePropertiesFile.inputStream().use(::load)
@@ -22,10 +22,10 @@ android {
         applicationId = "com.zenhold.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 10
+        versionCode = 11
         versionName = appVersionName
 
-        testInstrumentationRunner = "com.zenhold.app.HiltTestRunner"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
     }
 
@@ -58,6 +58,7 @@ android {
     kotlinOptions { jvmTarget = "17" }
 
     packaging.resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
+    sourceSets.getByName("androidTest").assets.srcDir("$projectDir/schemas")
 }
 
 base {
@@ -94,6 +95,8 @@ dependencies {
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("androidx.test:runner:1.6.2")
+    androidTestImplementation("androidx.room:room-testing:2.7.1")
 }
 
 ksp { arg("room.schemaLocation", "$projectDir/schemas") }

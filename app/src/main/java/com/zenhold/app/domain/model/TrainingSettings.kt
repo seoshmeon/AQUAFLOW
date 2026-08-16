@@ -10,6 +10,7 @@ data class TrainingSettings(
     val cueVolumePercent: Int = 70,
     val cueStyle: CueStyle = CueStyle.Bell,
     val vibrationEnabled: Boolean = true,
+    val vibrationStrength: VibrationStrength = VibrationStrength.Medium,
     val reduceMotion: Boolean = false,
     val fullScreenHoldGesture: Boolean = true,
     val themeMode: AppThemeMode = AppThemeMode.System,
@@ -52,3 +53,4 @@ enum class AppThemeMode {
 }
 
 enum class CueStyle { Bell, Soft, VibrationOnly, Silent }
+enum class VibrationStrength { Gentle, Medium, Strong }

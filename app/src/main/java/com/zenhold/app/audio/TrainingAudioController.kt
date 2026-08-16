@@ -1,6 +1,7 @@
 package com.zenhold.app.audio
 
 import com.zenhold.app.domain.model.CueStyle
+import com.zenhold.app.domain.model.VibrationStrength
 
 interface TrainingAudioController {
     fun configure(
@@ -8,6 +9,7 @@ interface TrainingAudioController {
         cueVolumePercent: Int,
         vibrationEnabled: Boolean,
         cueStyle: CueStyle = CueStyle.Bell,
+        vibrationStrength: VibrationStrength = VibrationStrength.Medium,
     )
     suspend fun startPreparationMusic()
     fun stopPreparationMusic()
