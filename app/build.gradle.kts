@@ -6,6 +6,8 @@ plugins {
     id("com.google.dagger.hilt.android")
 }
 
+val appVersionName = "1.1.0"
+
 android {
     namespace = "com.zenhold.app"
     compileSdk = 35
@@ -15,7 +17,7 @@ android {
         minSdk = 26
         targetSdk = 35
         versionCode = 2
-        versionName = "1.1.0"
+        versionName = appVersionName
 
         testInstrumentationRunner = "com.zenhold.app.HiltTestRunner"
         vectorDrawables.useSupportLibrary = true
@@ -30,6 +32,10 @@ android {
     kotlinOptions { jvmTarget = "17" }
 
     packaging.resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
+}
+
+base {
+    archivesName.set("AERNEA-$appVersionName")
 }
 
 dependencies {

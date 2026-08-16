@@ -30,7 +30,7 @@ DataStore, Kotlin Coroutines/StateFlow и Jetpack Media3.
 .\gradlew.bat :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
 ```
 
-APK появится в `app/build/outputs/apk/debug/app-debug.apk`.
+APK появится в `app/build/outputs/apk/debug/AERNEA-<версия>-debug.apk`.
 
 ## Безопасность
 
