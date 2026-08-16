@@ -1,5 +1,8 @@
 package com.zenhold.app.ui.home
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Arrangement
@@ -16,22 +19,31 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.Switch
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.zenhold.app.domain.model.TrainingSettings
 import com.zenhold.app.domain.model.AppThemeMode
 import com.zenhold.app.ui.components.NeumorphicPanel
+import com.zenhold.app.ui.components.NeumorphicAction
 import com.zenhold.app.ui.util.formatDuration
+import java.time.LocalDate
 
 @Composable
 fun SettingsScreen(
@@ -47,8 +59,24 @@ fun SettingsScreen(
     onReduceMotionChanged: (Boolean) -> Unit,
     onFullScreenHoldGestureChanged: (Boolean) -> Unit,
     onThemeModeChanged: (AppThemeMode) -> Unit,
+    dataMessage: String?,
+    onExportJson: (Uri) -> Unit,
+    onExportCsv: (Uri) -> Unit,
+    onImportJson: (Uri) -> Unit,
+    onClearData: () -> Unit,
+    onDismissDataMessage: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val exportJson = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json"),
+    ) { it?.let(onExportJson) }
+    val exportCsv = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("text/csv"),
+    ) { it?.let(onExportCsv) }
+    val importJson = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { it?.let(onImportJson) }
+    var confirmClear by remember { mutableStateOf(false) }
     BoxWithConstraints(modifier.fillMaxSize()) {
         val compact = maxWidth < 420.dp || LocalDensity.current.fontScale > 1.1f
         val horizontalPadding = if (maxWidth < 360.dp) 16.dp else 24.dp
@@ -146,8 +174,86 @@ fun SettingsScreen(
                 checked = settings.fullScreenHoldGesture,
                 onChecked = onFullScreenHoldGestureChanged,
             )
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(32.dp))
+            DataManagementSection(
+                onExportJson = {
+                    exportJson.launch("AQUAFLOW-backup-${LocalDate.now()}.json")
+                },
+                onExportCsv = {
+                    exportCsv.launch("AQUAFLOW-progress-${LocalDate.now()}.csv")
+                },
+                onImportJson = { importJson.launch(arrayOf("application/json", "text/plain")) },
+                onClearData = { confirmClear = true },
+            )
+            Spacer(Modifier.height(32.dp))
         }
+    }
+
+    if (confirmClear) {
+        AlertDialog(
+            onDismissRequest = { confirmClear = false },
+            title = { Text("Удалить все данные?") },
+            text = { Text("История тренировок и настройки будут удалены без возможности восстановления. Сначала можно сохранить JSON-копию.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmClear = false
+                    onClearData()
+                }) { Text("Удалить") }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmClear = false }) { Text("Отмена") }
+            },
+        )
+    }
+    dataMessage?.let { message ->
+        AlertDialog(
+            onDismissRequest = onDismissDataMessage,
+            title = { Text("Данные AQUAFLOW") },
+            text = { Text(message) },
+            confirmButton = { TextButton(onClick = onDismissDataMessage) { Text("Готово") } },
+        )
+    }
+}
+
+@Composable
+private fun DataManagementSection(
+    onExportJson: () -> Unit,
+    onExportCsv: () -> Unit,
+    onImportJson: () -> Unit,
+    onClearData: () -> Unit,
+) {
+    Text("Данные и резервные копии", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+    Spacer(Modifier.height(12.dp))
+    NeumorphicPanel(Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp), elevation = 9.dp) {
+        Column(
+            Modifier.fillMaxWidth().padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                "История хранится только на устройстве. JSON подходит для восстановления, CSV — для анализа.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            DataAction("Сохранить резервную копию JSON", onExportJson)
+            DataAction("Экспортировать прогресс в CSV", onExportCsv)
+            DataAction("Восстановить из JSON", onImportJson)
+            DataAction("Удалить историю и настройки", onClearData, destructive = true)
+        }
+    }
+}
+
+@Composable
+private fun DataAction(label: String, onClick: () -> Unit, destructive: Boolean = false) {
+    NeumorphicAction(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+    ) {
+        Text(
+            label,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+            color = if (destructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
+            fontWeight = FontWeight.Medium,
+            textAlign = TextAlign.Center,
+        )
     }
 }
 

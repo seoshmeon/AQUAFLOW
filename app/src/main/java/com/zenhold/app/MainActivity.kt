@@ -22,6 +22,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
@@ -42,6 +43,7 @@ import com.zenhold.app.ui.home.HomeScreen
 import com.zenhold.app.ui.home.HomeViewModel
 import com.zenhold.app.ui.home.SettingsScreen
 import com.zenhold.app.ui.home.SafetyScreen
+import com.zenhold.app.ui.home.OnboardingScreen
 import com.zenhold.app.ui.progress.ProgressScreen
 import com.zenhold.app.ui.progress.ProgressViewModel
 import com.zenhold.app.ui.progress.RecordsScreen
@@ -65,7 +67,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private enum class Destination { Home, SessionPlan, Training, Settings, Progress, Records, Safety }
+private enum class Destination { Onboarding, Home, SessionPlan, Training, Settings, Progress, Records, Safety }
 
 @Composable
 private fun ZenHoldApp(
@@ -74,6 +76,7 @@ private fun ZenHoldApp(
     progressViewModel: ProgressViewModel = hiltViewModel(),
 ) {
     val settings by homeViewModel.settings.collectAsStateWithLifecycle()
+    val dataMessage by homeViewModel.dataMessage.collectAsStateWithLifecycle()
     val trainingState by trainingViewModel.state.collectAsStateWithLifecycle()
     val progressState by progressViewModel.state.collectAsStateWithLifecycle()
     val followsSystemDark = isSystemInDarkTheme()
@@ -89,6 +92,12 @@ private fun ZenHoldApp(
     var confirmSystemBack by rememberSaveable { mutableStateOf(false) }
     val lifecycleOwner = LocalLifecycleOwner.current
     val latestTrainingState by rememberUpdatedState(trainingState)
+
+    LaunchedEffect(settings.onboardingCompleted) {
+        if (!settings.onboardingCompleted && destination != Destination.Training) {
+            destination = Destination.Onboarding
+        }
+    }
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -107,7 +116,10 @@ private fun ZenHoldApp(
         if (trainingState is TrainingState.Idle) destination = Destination.Home
         else confirmSystemBack = true
     }
-    BackHandler(enabled = destination != Destination.Home && destination != Destination.Training) {
+    BackHandler(
+        enabled = destination != Destination.Home && destination != Destination.Training &&
+            destination != Destination.Onboarding,
+    ) {
         destination = Destination.Home
     }
 
@@ -126,6 +138,12 @@ private fun ZenHoldApp(
                     WaveBackdrop(Modifier.fillMaxSize(), reduceMotion = settings.reduceMotion)
                 }
                 when (destination) {
+                    Destination.Onboarding -> OnboardingScreen(
+                        onComplete = {
+                            homeViewModel.completeOnboarding()
+                            destination = Destination.Home
+                        },
+                    )
                     Destination.Home -> HomeScreen(
                         settings = settings,
                         onStart = { destination = Destination.SessionPlan },
@@ -144,6 +162,12 @@ private fun ZenHoldApp(
                         onReduceMotionChanged = homeViewModel::setReduceMotion,
                         onFullScreenHoldGestureChanged = homeViewModel::setFullScreenHoldGesture,
                         onThemeModeChanged = homeViewModel::setThemeMode,
+                        dataMessage = dataMessage,
+                        onExportJson = homeViewModel::exportJson,
+                        onExportCsv = homeViewModel::exportCsv,
+                        onImportJson = homeViewModel::importJson,
+                        onClearData = homeViewModel::clearAllData,
+                        onDismissDataMessage = homeViewModel::dismissDataMessage,
                     )
                     Destination.SessionPlan -> PreTrainingScreen(
                         settings = settings,
@@ -227,7 +251,7 @@ private fun ZenHoldApp(
                         },
                         modifier = Modifier.align(Alignment.TopEnd),
                     )
-                } else {
+                } else if (destination != Destination.Onboarding) {
                     AppNavigationMenu(
                         onHome = { destination = Destination.Home },
                         onSettings = { destination = Destination.Settings },

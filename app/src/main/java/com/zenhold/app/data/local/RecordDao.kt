@@ -11,11 +11,17 @@ interface RecordDao {
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(record: BreathHoldRecord): Long
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(records: List<BreathHoldRecord>)
+
     @Query("SELECT * FROM breath_hold_records ORDER BY timestamp ASC, id ASC")
     fun observeAll(): Flow<List<BreathHoldRecord>>
 
     @Query("SELECT * FROM breath_hold_records ORDER BY timestamp DESC, id DESC LIMIT :limit")
     suspend fun latest(limit: Int): List<BreathHoldRecord>
+
+    @Query("SELECT * FROM breath_hold_records ORDER BY timestamp ASC, id ASC")
+    suspend fun getAll(): List<BreathHoldRecord>
 
     @Query("UPDATE breath_hold_records SET comfortRating = :rating WHERE id = :recordId")
     suspend fun updateComfort(recordId: Long, rating: Int)

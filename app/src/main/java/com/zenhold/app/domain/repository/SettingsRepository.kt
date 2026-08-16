@@ -6,4 +6,5 @@ import kotlinx.coroutines.flow.Flow
 interface SettingsRepository {
     val settings: Flow<TrainingSettings>
     suspend fun update(settings: TrainingSettings)
+    suspend fun reset()
 }

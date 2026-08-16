@@ -6,6 +6,7 @@ import com.zenhold.app.audio.Media3TrainingAudioController
 import com.zenhold.app.audio.TrainingAudioController
 import com.zenhold.app.data.local.AppDatabase
 import com.zenhold.app.data.local.RecordDao
+import com.zenhold.app.data.local.TrainingSessionDao
 import com.zenhold.app.data.repository.DataStoreSettingsRepository
 import com.zenhold.app.data.repository.RoomRecordRepository
 import com.zenhold.app.domain.repository.RecordRepository
@@ -39,4 +40,6 @@ object DatabaseModule {
             .build()
 
     @Provides fun provideRecordDao(database: AppDatabase): RecordDao = database.recordDao()
+    @Provides fun provideTrainingSessionDao(database: AppDatabase): TrainingSessionDao =
+        database.trainingSessionDao()
 }

@@ -12,6 +12,7 @@ data class TrainingSettings(
     val reduceMotion: Boolean = false,
     val fullScreenHoldGesture: Boolean = true,
     val themeMode: AppThemeMode = AppThemeMode.System,
+    val onboardingCompleted: Boolean = true,
 ) {
     init {
         require(attemptCount in 1..10)

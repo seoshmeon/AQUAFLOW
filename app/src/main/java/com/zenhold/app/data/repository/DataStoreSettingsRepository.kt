@@ -34,6 +34,7 @@ class DataStoreSettingsRepository @Inject constructor(
         val reduceMotion = booleanPreferencesKey("reduce_motion")
         val fullScreenHoldGesture = booleanPreferencesKey("full_screen_hold_gesture")
         val themeMode = stringPreferencesKey("theme_mode")
+        val onboardingCompleted = booleanPreferencesKey("onboarding_completed")
     }
 
     override val settings: Flow<TrainingSettings> = context.trainingDataStore.data.map { values ->
@@ -54,6 +55,7 @@ class DataStoreSettingsRepository @Inject constructor(
             themeMode = values[Keys.themeMode]
                 ?.let { stored -> AppThemeMode.entries.firstOrNull { it.name == stored } }
                 ?: AppThemeMode.System,
+            onboardingCompleted = values[Keys.onboardingCompleted] ?: false,
         )
     }
 
@@ -70,6 +72,11 @@ class DataStoreSettingsRepository @Inject constructor(
             values[Keys.reduceMotion] = settings.reduceMotion
             values[Keys.fullScreenHoldGesture] = settings.fullScreenHoldGesture
             values[Keys.themeMode] = settings.themeMode.name
+            values[Keys.onboardingCompleted] = settings.onboardingCompleted
         }
+    }
+
+    override suspend fun reset() {
+        context.trainingDataStore.edit { it.clear() }
     }
 }

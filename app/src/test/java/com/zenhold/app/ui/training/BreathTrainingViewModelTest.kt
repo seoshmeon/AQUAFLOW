@@ -2,6 +2,7 @@ package com.zenhold.app.ui.training
 
 import com.zenhold.app.audio.TrainingAudioController
 import com.zenhold.app.data.local.BreathHoldRecord
+import com.zenhold.app.data.local.TrainingSessionEntity
 import com.zenhold.app.domain.model.TrainingSettings
 import com.zenhold.app.domain.model.TrainingState
 import com.zenhold.app.domain.repository.RecordRepository
@@ -64,6 +65,7 @@ class BreathTrainingViewModelTest {
         advanceTimeBy(30_000L)
         runCurrent()
         assertTrue(viewModel.state.value is TrainingState.Finished)
+        assertEquals(TrainingSessionEntity.STATUS_COMPLETED, repository.finishedStatus)
     }
 
     @Test
@@ -82,6 +84,7 @@ class BreathTrainingViewModelTest {
 
         assertEquals(TrainingState.Idle, viewModel.state.value)
         assertTrue(repository.saved.isEmpty())
+        assertEquals(TrainingSessionEntity.STATUS_STOPPED, repository.finishedStatus)
     }
 
     @Test
@@ -100,6 +103,7 @@ class BreathTrainingViewModelTest {
 
         assertTrue(viewModel.state.value is TrainingState.Interrupted)
         assertTrue(repository.saved.isEmpty())
+        assertEquals(TrainingSessionEntity.STATUS_INTERRUPTED, repository.finishedStatus)
     }
 
     @Test
@@ -127,6 +131,8 @@ class BreathTrainingViewModelTest {
 
 private class FakeRecordRepository : RecordRepository {
     val saved = mutableListOf<BreathHoldRecord>()
+    var startedSession: TrainingSessionEntity? = null
+    var finishedStatus: String? = null
     private val records = MutableStateFlow<List<BreathHoldRecord>>(emptyList())
     override fun observeRecords(): Flow<List<BreathHoldRecord>> = records
     override suspend fun save(record: BreathHoldRecord): Long {
@@ -142,6 +148,13 @@ private class FakeRecordRepository : RecordRepository {
         saved.indices.filter { saved[it].sessionId == sessionId }.forEach { index ->
             saved[index] = saved[index].copy(sessionNote = note)
         }
+    }
+    override suspend fun startSession(session: TrainingSessionEntity) {
+        startedSession = session
+    }
+    override suspend fun updateSessionProgress(sessionId: String, completedAttempts: Int) = Unit
+    override suspend fun finishSession(sessionId: String, status: String, reason: String) {
+        finishedStatus = status
     }
 }
 

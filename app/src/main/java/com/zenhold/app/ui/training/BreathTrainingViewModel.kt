@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.zenhold.app.audio.TrainingAudioController
 import com.zenhold.app.data.local.BreathHoldRecord
+import com.zenhold.app.data.local.TrainingSessionEntity
 import com.zenhold.app.domain.model.TrainingSettings
 import com.zenhold.app.domain.model.TrainingState
 import com.zenhold.app.domain.model.SessionCheckIn
@@ -32,12 +33,14 @@ class BreathTrainingViewModel @Inject constructor(
     private var timerJob: Job? = null
     private var hiddenHoldTickerJob: Job? = null
     private var holdGuardJob: Job? = null
+    private var sessionCreateJob: Job? = null
     private var holdStartedAtMillis: Long? = null
     private var hiddenElapsedMillis: Long = 0L
     private var settings = TrainingSettings()
     private var checkIn = SessionCheckIn()
     private var currentAttempt = 1
     private var sessionId = ""
+    private var sessionFinalized = false
     private val sessionResults = mutableListOf<Long>()
     private val savedRecordIds = mutableMapOf<Int, Long>()
     private val pendingComfortRatings = mutableMapOf<Int, ComfortRating>()
@@ -54,9 +57,23 @@ class BreathTrainingViewModel @Inject constructor(
         checkIn = sessionCheckIn
         currentAttempt = 1
         sessionId = UUID.randomUUID().toString()
+        sessionFinalized = false
         sessionResults.clear()
         savedRecordIds.clear()
         pendingComfortRatings.clear()
+        sessionCreateJob = viewModelScope.launch {
+            records.startSession(
+                TrainingSessionEntity(
+                    sessionId = sessionId,
+                    startedAt = System.currentTimeMillis(),
+                    plannedAttempts = settings.attemptCount,
+                    preparationDurationMillis = settings.preparationDurationMillis,
+                    recoveryDurationMillis = settings.recoveryDurationMillis,
+                    energyLevel = checkIn.energyLevel,
+                    stressLevel = checkIn.stressLevel,
+                ),
+            )
+        }
         startPreparation()
     }
 
@@ -139,6 +156,7 @@ class BreathTrainingViewModel @Inject constructor(
         sessionResults += duration
 
         viewModelScope.launch {
+            sessionCreateJob?.join()
             runCatching {
                 val recordId = records.save(
                     BreathHoldRecord(
@@ -152,6 +170,7 @@ class BreathTrainingViewModel @Inject constructor(
                     ),
                 )
                 savedRecordIds[completedAttempt] = recordId
+                records.updateSessionProgress(sessionId, completedAttempt)
                 pendingComfortRatings.remove(completedAttempt)?.let { rating ->
                     records.updateComfort(recordId, rating.storedValue)
                 }
@@ -174,6 +193,7 @@ class BreathTrainingViewModel @Inject constructor(
             }
 
             if (completedAttempt >= settings.attemptCount) {
+                finalizeSession(TrainingSessionEntity.STATUS_COMPLETED)
                 _state.value = TrainingState.Finished(sessionResults.toList())
             } else {
                 currentAttempt = completedAttempt + 1
@@ -205,12 +225,19 @@ class BreathTrainingViewModel @Inject constructor(
     }
 
     fun finishNow() {
+        val stateBeforeFinish = _state.value
         timerJob?.cancel()
         hiddenHoldTickerJob?.cancel()
         holdGuardJob?.cancel()
         holdStartedAtMillis = null
         audio.stopPreparationMusic()
         audio.stopHoldingMusic()
+        if (stateBeforeFinish !is TrainingState.Idle &&
+            stateBeforeFinish !is TrainingState.Finished &&
+            stateBeforeFinish !is TrainingState.Interrupted
+        ) {
+            finalizeSession(TrainingSessionEntity.STATUS_STOPPED, "Остановлено пользователем")
+        }
         _state.value = if (sessionResults.isEmpty()) TrainingState.Idle
         else TrainingState.Finished(sessionResults.toList())
     }
@@ -227,6 +254,10 @@ class BreathTrainingViewModel @Inject constructor(
         holdStartedAtMillis = null
         audio.stopPreparationMusic()
         audio.stopHoldingMusic()
+        finalizeSession(
+            TrainingSessionEntity.STATUS_INTERRUPTED,
+            "Приложение свёрнуто или тренировка прервана системой",
+        )
         _state.value = TrainingState.Interrupted(
             resultsMillis = sessionResults.toList(),
             message = if (activeState is TrainingState.Holding) {
@@ -250,6 +281,15 @@ class BreathTrainingViewModel @Inject constructor(
         audio.stopPreparationMusic()
         audio.stopHoldingMusic()
         super.onCleared()
+    }
+
+    private fun finalizeSession(status: String, reason: String = "") {
+        if (sessionFinalized || sessionId.isBlank()) return
+        sessionFinalized = true
+        viewModelScope.launch {
+            sessionCreateJob?.join()
+            records.finishSession(sessionId, status, reason)
+        }
     }
 
     companion object {
