@@ -2,6 +2,7 @@ package com.zenhold.app.ui.components
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ShowChart
@@ -14,7 +15,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -38,7 +38,11 @@ fun AppNavigationMenu(
 ) {
     var expanded by remember { mutableStateOf(false) }
     Column(modifier.statusBarsPadding().padding(8.dp)) {
-        IconButton(onClick = { expanded = true }) {
+        NeumorphicAction(
+            onClick = { expanded = true },
+            modifier = Modifier.size(46.dp),
+            shape = RoundedCornerShape(7.dp),
+        ) {
             Icon(Icons.Rounded.Menu, contentDescription = "Открыть меню")
         }
         DropdownMenu(
@@ -71,7 +75,12 @@ fun TrainingMenu(
     var expanded by remember { mutableStateOf(false) }
     var confirmation by remember { mutableStateOf<TrainingExitAction?>(null) }
     Column(modifier.statusBarsPadding().padding(8.dp)) {
-        IconButton(onClick = { expanded = true }) {
+        NeumorphicAction(
+            onClick = { expanded = true },
+            modifier = Modifier.size(46.dp),
+            shape = RoundedCornerShape(7.dp),
+            color = if (darkBackground) Color(0xFF111516) else Color.Unspecified,
+        ) {
             Icon(
                 Icons.Rounded.Menu,
                 contentDescription = "Меню тренировки",

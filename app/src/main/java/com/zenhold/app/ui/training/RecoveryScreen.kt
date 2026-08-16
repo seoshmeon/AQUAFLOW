@@ -11,6 +11,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -47,11 +48,14 @@ fun RecoveryScreen(state: TrainingState.Recovering, modifier: Modifier = Modifie
     val progress = if (state.totalRecoveryMillis == 0L) 1f
     else 1f - state.remainingMillis.toFloat() / state.totalRecoveryMillis
 
-    Column(
-        modifier.fillMaxSize().keepScreenOn().padding(28.dp),
+    BoxWithConstraints(modifier.fillMaxSize().keepScreenOn()) {
+      val pagePadding = if (maxWidth < 360.dp || maxHeight < 650.dp) 18.dp else 28.dp
+      val circleSize = minOf(maxWidth * .72f, maxHeight * .42f, 300.dp).coerceAtLeast(176.dp)
+      Column(
+        Modifier.align(Alignment.Center).fillMaxSize().padding(pagePadding),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.SpaceBetween,
-    ) {
+      ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text("РЕЗУЛЬТАТ", color = accent, letterSpacing = 3.sp, fontSize = 12.sp)
             AnimatedVisibility(visible = showResult, enter = fadeIn(tween(900)) + scaleIn(tween(900))) {
@@ -65,11 +69,11 @@ fun RecoveryScreen(state: TrainingState.Recovering, modifier: Modifier = Modifie
         }
 
         NeumorphicPanel(
-            modifier = Modifier.size(284.dp),
+            modifier = Modifier.size(circleSize),
             shape = CircleShape,
             contentAlignment = Alignment.Center,
         ) {
-            Canvas(Modifier.size(252.dp)) {
+            Canvas(Modifier.size(circleSize - 32.dp)) {
                 drawCircle(accent.copy(alpha = .07f), radius = size.minDimension * .45f * breathScale)
                 drawArc(accent.copy(alpha = .16f), -90f, 360f, false, style = Stroke(5.dp.toPx(), cap = StrokeCap.Round))
                 drawArc(accent, -90f, 360f * progress.coerceIn(0f, 1f), false, style = Stroke(5.dp.toPx(), cap = StrokeCap.Round))
@@ -85,5 +89,6 @@ fun RecoveryScreen(state: TrainingState.Recovering, modifier: Modifier = Modifie
             "Завершён подход ${state.completedAttempt} из ${state.totalAttempts}",
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+      }
     }
 }

@@ -2,14 +2,24 @@ package com.zenhold.app.ui.progress
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -38,15 +48,32 @@ import com.zenhold.app.ui.util.formatDuration
 @Composable
 fun ProgressScreen(state: ProgressUiState, onBack: () -> Unit, modifier: Modifier = Modifier) {
     val accent = MaterialTheme.colorScheme.primary
-    Column(modifier.fillMaxSize().padding(24.dp)) {
+    BoxWithConstraints(modifier.fillMaxSize()) {
+      val compactWidth = maxWidth < 420.dp
+      Column(
+        Modifier.align(Alignment.TopCenter)
+            .fillMaxWidth()
+            .widthIn(max = 900.dp)
+            .statusBarsPadding()
+            .navigationBarsPadding()
+            .verticalScroll(rememberScrollState())
+            .padding(if (maxWidth < 360.dp) 16.dp else 24.dp),
+      ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Назад") }
             Text("Мой прогресс", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
         }
         Spacer(Modifier.height(24.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            MetricCard("Личный рекорд", formatDuration(state.personalBestMillis), Modifier.weight(1f))
-            MetricCard("Среднее · 10", formatDuration(state.recentAverageMillis), Modifier.weight(1f))
+        if (compactWidth) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                MetricCard("Личный рекорд", formatDuration(state.personalBestMillis), Modifier.fillMaxWidth())
+                MetricCard("Среднее · 10", formatDuration(state.recentAverageMillis), Modifier.fillMaxWidth())
+            }
+        } else {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                MetricCard("Личный рекорд", formatDuration(state.personalBestMillis), Modifier.weight(1f))
+                MetricCard("Среднее · 10", formatDuration(state.recentAverageMillis), Modifier.weight(1f))
+            }
         }
         Spacer(Modifier.height(16.dp))
         NeumorphicPanel(
@@ -77,6 +104,25 @@ fun ProgressScreen(state: ProgressUiState, onBack: () -> Unit, modifier: Modifie
             }
         }
         Spacer(Modifier.height(16.dp))
+        if (state.months.isNotEmpty()) {
+            Text("Прогресс по месяцам", fontWeight = FontWeight.SemiBold)
+            Text(
+                "Среднее и лучший результат сохраняются за каждый месяц",
+                fontSize = 13.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(12.dp))
+            LazyRow(
+                modifier = Modifier.fillMaxWidth().height(172.dp),
+                contentPadding = PaddingValues(horizontal = 2.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                items(state.months.asReversed(), key = { it.yearMonth.toString() }) { month ->
+                    MonthCard(month)
+                }
+            }
+            Spacer(Modifier.height(18.dp))
+        }
         Text("Путь к спокойствию", fontWeight = FontWeight.SemiBold)
         Spacer(Modifier.height(8.dp))
         LinearProgressIndicator(
@@ -87,6 +133,34 @@ fun ProgressScreen(state: ProgressUiState, onBack: () -> Unit, modifier: Modifie
             strokeCap = StrokeCap.Round,
         )
         Text("${state.sessions.size} из 20 тренировок", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(Modifier.height(24.dp))
+      }
+    }
+}
+
+@Composable
+private fun MonthCard(month: MonthPoint) {
+    NeumorphicPanel(
+        modifier = Modifier.width(224.dp).height(158.dp),
+        shape = RoundedCornerShape(24.dp),
+        elevation = 9.dp,
+    ) {
+        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(month.label, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("Лучшее", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(formatDuration(month.maximumMillis), fontWeight = FontWeight.Medium)
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("Среднее", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(formatDuration(month.averageMillis))
+            }
+            Text(
+                "${month.sessionCount} сесс. · ${month.attemptCount} подх.",
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = .72f),
+            )
+        }
     }
 }
 

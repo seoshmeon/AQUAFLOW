@@ -32,6 +32,7 @@ import com.zenhold.app.domain.model.TrainingState
 import com.zenhold.app.domain.model.AppThemeMode
 import com.zenhold.app.ui.components.AppNavigationMenu
 import com.zenhold.app.ui.components.TrainingMenu
+import com.zenhold.app.ui.components.WaveBackdrop
 import com.zenhold.app.ui.home.HomeScreen
 import com.zenhold.app.ui.home.HomeViewModel
 import com.zenhold.app.ui.home.SettingsScreen
@@ -97,6 +98,9 @@ private fun ZenHoldApp(
     ZenHoldTheme(darkTheme = darkTheme) {
         Surface(Modifier.fillMaxSize()) {
             Box(Modifier.fillMaxSize()) {
+                if (trainingState !is TrainingState.Holding) {
+                    WaveBackdrop(Modifier.fillMaxSize())
+                }
                 when (destination) {
                     Destination.Home -> HomeScreen(
                         settings = settings,

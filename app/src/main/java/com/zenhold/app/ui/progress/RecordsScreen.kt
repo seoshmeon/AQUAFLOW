@@ -1,6 +1,7 @@
 package com.zenhold.app.ui.progress
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -8,8 +9,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -34,8 +37,17 @@ import java.util.Locale
 
 @Composable
 fun RecordsScreen(records: List<BreathHoldRecord>, modifier: Modifier = Modifier) {
-    Column(modifier.fillMaxSize().statusBarsPadding().padding(top = 72.dp)) {
-        Column(Modifier.padding(horizontal = 24.dp)) {
+    BoxWithConstraints(modifier.fillMaxSize()) {
+      val pagePadding = if (maxWidth < 360.dp) 16.dp else 24.dp
+      Column(
+        Modifier.align(Alignment.TopCenter)
+            .fillMaxSize()
+            .widthIn(max = 840.dp)
+            .statusBarsPadding()
+            .navigationBarsPadding()
+            .padding(top = 72.dp),
+      ) {
+        Column(Modifier.padding(horizontal = pagePadding)) {
             Text("Рекорды", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.SemiBold)
             Text(
                 "Все завершённые задержки",
@@ -60,12 +72,13 @@ fun RecordsScreen(records: List<BreathHoldRecord>, modifier: Modifier = Modifier
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp),
+                contentPadding = PaddingValues(horizontal = pagePadding, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(18.dp),
             ) {
                 items(records, key = { it.id }) { record -> RecordRow(record) }
             }
         }
+      }
     }
 }
 

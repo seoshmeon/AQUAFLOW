@@ -6,7 +6,7 @@ plugins {
     id("com.google.dagger.hilt.android")
 }
 
-val appVersionName = "1.1.0"
+val appVersionName = "1.2.0"
 
 android {
     namespace = "com.zenhold.app"
@@ -16,7 +16,7 @@ android {
         applicationId = "com.zenhold.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
+        versionCode = 3
         versionName = appVersionName
 
         testInstrumentationRunner = "com.zenhold.app.HiltTestRunner"
@@ -35,7 +35,7 @@ android {
 }
 
 base {
-    archivesName.set("AERNEA-$appVersionName")
+    archivesName.set("APIRA-$appVersionName")
 }
 
 dependencies {

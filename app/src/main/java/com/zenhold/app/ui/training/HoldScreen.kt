@@ -10,6 +10,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -65,17 +66,18 @@ fun HoldScreen(onStopHolding: () -> Unit, modifier: Modifier = Modifier) {
         animationSpec = infiniteRepeatable(tween(2_400), RepeatMode.Reverse),
         label = "target pulse",
     )
-    Box(
+    BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
             .background(Color(0xFF010202))
             .keepScreenOn(),
         contentAlignment = Alignment.Center,
     ) {
+        val targetSize = minOf(maxWidth * .58f, maxHeight * .4f, 250.dp).coerceAtLeast(180.dp)
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Box(
                 modifier = Modifier
-                    .size(236.dp)
+                    .size(targetSize)
                     .scale(pulse)
                     .background(ZenGreen.copy(alpha = .075f), CircleShape)
                     .border(2.dp, ZenGreen.copy(alpha = .58f), CircleShape)

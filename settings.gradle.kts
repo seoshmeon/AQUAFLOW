@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "AERNEA"
+rootProject.name = "APIRA"
 include(":app")

@@ -1,12 +1,15 @@
 package com.zenhold.app.ui.home
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -32,42 +35,46 @@ fun SettingsScreen(
     onThemeModeChanged: (AppThemeMode) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(
-        modifier.fillMaxSize()
-            .statusBarsPadding()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 24.dp, vertical = 72.dp),
-    ) {
-        Text("Настройки", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.SemiBold)
-        Text(
-            "Тема меняется сразу. Параметры тренировки — со следующей сессии.",
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(Modifier.height(40.dp))
-        ThemeModeSelector(
-            selected = settings.themeMode,
-            onSelected = onThemeModeChanged,
-        )
-        Spacer(Modifier.height(28.dp))
-        TrainingSettingSlider(
-            label = "Количество подходов",
-            valueLabel = settings.attemptCount.toString(),
-            value = settings.attemptCount.toFloat(),
-            range = 1f..10f,
-            steps = 8,
-            onValue = { onAttemptsChanged(it.toInt()) },
-        )
-        Spacer(Modifier.height(28.dp))
-        TrainingSettingSlider(
-            label = "Время восстановления",
-            valueLabel = formatDuration(settings.recoveryDurationMillis),
-            value = (settings.recoveryDurationMillis / 1_000).toFloat(),
-            range = 30f..600f,
-            steps = 37,
-            onValue = { seconds ->
-                onRecoverySecondsChanged(((seconds / 15).toInt() * 15).coerceIn(30, 600))
-            },
-        )
+    BoxWithConstraints(modifier.fillMaxSize()) {
+        val horizontalPadding = if (maxWidth < 360.dp) 16.dp else 24.dp
+        Column(
+            Modifier.align(androidx.compose.ui.Alignment.TopCenter)
+                .fillMaxWidth()
+                .widthIn(max = 820.dp)
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = horizontalPadding, vertical = 72.dp),
+        ) {
+            Text("Настройки", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.SemiBold)
+            Text(
+                "Тема меняется сразу. Параметры тренировки — со следующей сессии.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(40.dp))
+            ThemeModeSelector(selected = settings.themeMode, onSelected = onThemeModeChanged)
+            Spacer(Modifier.height(28.dp))
+            TrainingSettingSlider(
+                label = "Количество подходов",
+                valueLabel = settings.attemptCount.toString(),
+                value = settings.attemptCount.toFloat(),
+                range = 1f..10f,
+                steps = 8,
+                onValue = { onAttemptsChanged(it.toInt()) },
+            )
+            Spacer(Modifier.height(28.dp))
+            TrainingSettingSlider(
+                label = "Время восстановления",
+                valueLabel = formatDuration(settings.recoveryDurationMillis),
+                value = (settings.recoveryDurationMillis / 1_000).toFloat(),
+                range = 30f..600f,
+                steps = 37,
+                onValue = { seconds ->
+                    onRecoverySecondsChanged(((seconds / 15).toInt() * 15).coerceIn(30, 600))
+                },
+            )
+            Spacer(Modifier.height(24.dp))
+        }
     }
 }
 
@@ -85,11 +92,11 @@ private fun ThemeModeSelector(
             Text("Тема приложения", color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(12.dp))
             SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                modes.forEachIndexed { index, mode ->
+                modes.forEach { mode ->
                     SegmentedButton(
                         selected = selected == mode,
                         onClick = { onSelected(mode) },
-                        shape = SegmentedButtonDefaults.itemShape(index, modes.size),
+                        shape = RoundedCornerShape(7.dp),
                         colors = SegmentedButtonDefaults.colors(
                             activeContainerColor = MaterialTheme.colorScheme.primary,
                             activeContentColor = MaterialTheme.colorScheme.onPrimary,

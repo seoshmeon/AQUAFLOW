@@ -7,6 +7,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -38,13 +39,14 @@ fun PreparationScreen(state: TrainingState.Preparation, modifier: Modifier = Mod
         animationSpec = infiniteRepeatable(tween(5_500), RepeatMode.Reverse),
         label = "slow breath",
     )
-    Box(modifier.fillMaxSize().keepScreenOn(), contentAlignment = Alignment.Center) {
+    BoxWithConstraints(modifier.fillMaxSize().keepScreenOn(), contentAlignment = Alignment.Center) {
+        val circleSize = minOf(maxWidth * .76f, maxHeight * .48f, 330.dp).coerceAtLeast(190.dp)
         NeumorphicPanel(
-            modifier = Modifier.size(310.dp),
+            modifier = Modifier.size(circleSize),
             shape = CircleShape,
             contentAlignment = Alignment.Center,
         ) {
-            Canvas(Modifier.size(278.dp)) {
+            Canvas(Modifier.size(circleSize - 32.dp)) {
                 drawCircle(accent.copy(alpha = 0.07f), radius = size.minDimension * .48f * pulse)
                 drawCircle(accent.copy(alpha = 0.22f), radius = size.minDimension * .34f * pulse, style = Stroke(2.dp.toPx()))
                 drawCircle(accent.copy(alpha = 0.18f), radius = size.minDimension * .19f * pulse)
