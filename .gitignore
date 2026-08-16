@@ -1,0 +1,18 @@
+.gradle/
+.idea/
+local.properties
+**/build/
+captures/
+*.iml
+*.apk
+*.aab
+*.jks
+*.keystore
+keystore.properties
+
+# Local visual QA evidence is useful during development but does not belong in releases.
+audit-*/
+audit-theme-*/
+design-qa/
+design-audit-*.md
+design-qa.md
