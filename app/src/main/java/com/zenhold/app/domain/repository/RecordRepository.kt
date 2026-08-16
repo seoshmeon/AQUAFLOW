@@ -7,4 +7,5 @@ interface RecordRepository {
     fun observeRecords(): Flow<List<BreathHoldRecord>>
     suspend fun save(record: BreathHoldRecord): Long
     suspend fun updateComfort(recordId: Long, rating: Int)
+    suspend fun updateSessionNote(sessionId: String, note: String)
 }

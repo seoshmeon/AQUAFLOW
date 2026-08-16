@@ -22,7 +22,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ShowChart
 import androidx.compose.material.icons.rounded.Air
-import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
@@ -30,6 +29,7 @@ import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zenhold.app.domain.model.TrainingSettings
 import com.zenhold.app.ui.components.NeumorphicAction
+import com.zenhold.app.ui.components.NeoTactilePrimaryAction
 import com.zenhold.app.ui.components.NeumorphicPanel
 import com.zenhold.app.ui.util.formatDuration
 
@@ -174,23 +175,17 @@ private fun SessionOverview(settings: TrainingSettings, compact: Boolean, modifi
 
 @Composable
 private fun StartAction(onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val accent = MaterialTheme.colorScheme.primary
-    NeumorphicAction(
+    NeoTactilePrimaryAction(
         onClick = onClick,
         modifier = modifier.heightIn(min = 58.dp),
-        color = accent,
-        shape = RoundedCornerShape(7.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Rounded.PlayArrow, null, tint = MaterialTheme.colorScheme.onPrimary)
-            Text(
-                "  Начать тренировку",
-                color = MaterialTheme.colorScheme.onPrimary,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
+        Text(
+            "Начать тренировку",
+            color = Color.White,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 

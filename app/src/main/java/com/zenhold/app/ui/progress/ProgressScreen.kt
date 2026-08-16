@@ -2,6 +2,7 @@ package com.zenhold.app.ui.progress
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Column
@@ -44,10 +45,17 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zenhold.app.ui.components.NeumorphicPanel
+import com.zenhold.app.ui.components.NeumorphicAction
 import com.zenhold.app.ui.util.formatDuration
+import java.time.YearMonth
 
 @Composable
-fun ProgressScreen(state: ProgressUiState, onBack: () -> Unit, modifier: Modifier = Modifier) {
+fun ProgressScreen(
+    state: ProgressUiState,
+    onPeriodSelected: (ProgressPeriod) -> Unit,
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val accent = MaterialTheme.colorScheme.primary
     BoxWithConstraints(modifier.fillMaxSize()) {
       val compactWidth = maxWidth < 420.dp
@@ -65,6 +73,17 @@ fun ProgressScreen(state: ProgressUiState, onBack: () -> Unit, modifier: Modifie
             Text("Мой прогресс", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
         }
         Spacer(Modifier.height(24.dp))
+        PeriodSelector(state.selectedPeriod, onPeriodSelected)
+        state.comparisonPercent?.let { percent ->
+            Spacer(Modifier.height(12.dp))
+            Text(
+                if (percent >= 0f) "Среднее выше предыдущего периода на ${percent.toInt()}%"
+                else "Среднее ниже предыдущего периода на ${kotlin.math.abs(percent).toInt()}%",
+                color = if (percent >= 0f) accent else MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 13.sp,
+            )
+        }
+        Spacer(Modifier.height(18.dp))
         if (compactWidth) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 MetricCard("Личный рекорд", formatDuration(state.personalBestMillis), Modifier.fillMaxWidth())
@@ -115,6 +134,24 @@ fun ProgressScreen(state: ProgressUiState, onBack: () -> Unit, modifier: Modifie
             }
         }
         Spacer(Modifier.height(16.dp))
+        MonthCalendar(state)
+        Spacer(Modifier.height(20.dp))
+        Text("Достижения", fontWeight = FontWeight.SemiBold)
+        Text(
+            "Без соревнования с другими — только спокойные личные ориентиры",
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontSize = 13.sp,
+        )
+        Spacer(Modifier.height(10.dp))
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(horizontal = 2.dp, vertical = 6.dp),
+        ) {
+            items(state.achievements, key = { it.title }) { achievement ->
+                AchievementCard(achievement)
+            }
+        }
+        Spacer(Modifier.height(20.dp))
         if (state.months.isNotEmpty()) {
             Text("Прогресс по месяцам", fontWeight = FontWeight.SemiBold)
             Text(
@@ -146,6 +183,109 @@ fun ProgressScreen(state: ProgressUiState, onBack: () -> Unit, modifier: Modifie
         Text("${state.sessions.size} из 20 тренировок", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(24.dp))
       }
+    }
+}
+
+@Composable
+private fun PeriodSelector(selected: ProgressPeriod, onSelected: (ProgressPeriod) -> Unit) {
+    val periods = listOf(
+        ProgressPeriod.Week to "7 дней",
+        ProgressPeriod.Month to "Месяц",
+        ProgressPeriod.Quarter to "3 месяца",
+        ProgressPeriod.Year to "Год",
+        ProgressPeriod.All to "Всё",
+    )
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        items(periods, key = { it.first.name }) { (period, label) ->
+            val active = selected == period
+            NeumorphicAction(
+                onClick = { onSelected(period) },
+                modifier = Modifier.heightIn(min = 42.dp).widthIn(min = 78.dp),
+                shape = RoundedCornerShape(18.dp),
+                color = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
+            ) {
+                Text(
+                    label,
+                    color = if (active) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(horizontal = 12.dp),
+                    maxLines = 1,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun MonthCalendar(state: ProgressUiState) {
+    val month = YearMonth.now()
+    val accent = MaterialTheme.colorScheme.primary
+    val activity = state.calendarDays.associateBy { it.dayOfMonth }
+    val offset = month.atDay(1).dayOfWeek.value - 1
+    val cells = List<Int?>(offset) { null } + (1..month.lengthOfMonth()).map { it }
+    NeumorphicPanel(Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp), elevation = 9.dp) {
+        Column(Modifier.padding(18.dp)) {
+            Text("Календарь · ${state.calendarMonthLabel}", fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(14.dp))
+            Row(Modifier.fillMaxWidth()) {
+                listOf("П", "В", "С", "Ч", "П", "С", "В").forEach { day ->
+                    Text(
+                        day,
+                        modifier = Modifier.weight(1f),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 11.sp,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    )
+                }
+            }
+            cells.chunked(7).forEach { week ->
+                Row(Modifier.fillMaxWidth().padding(top = 7.dp)) {
+                    (week + List(7 - week.size) { null }).forEach { day ->
+                        val trained = day?.let(activity::get)
+                        Box(
+                            Modifier.weight(1f).height(34.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            if (day != null) {
+                                if (trained != null) {
+                                    Canvas(Modifier.size(30.dp)) {
+                                        drawCircle(accent.copy(alpha = .2f))
+                                    }
+                                }
+                                Text(
+                                    day.toString(),
+                                    color = if (trained != null) MaterialTheme.colorScheme.primary
+                                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontSize = 12.sp,
+                                    fontWeight = if (trained != null) FontWeight.SemiBold else FontWeight.Normal,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AchievementCard(achievement: Achievement) {
+    NeumorphicPanel(
+        modifier = Modifier.width(216.dp).heightIn(min = 104.dp),
+        shape = RoundedCornerShape(22.dp),
+        elevation = if (achievement.unlocked) 10.dp else 5.dp,
+    ) {
+        Column(Modifier.padding(16.dp)) {
+            Text(
+                if (achievement.unlocked) "ОТКРЫТО" else "В ПРОЦЕССЕ",
+                color = if (achievement.unlocked) MaterialTheme.colorScheme.primary
+                else MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 10.sp,
+                letterSpacing = 1.2.sp,
+            )
+            Text(achievement.title, fontWeight = FontWeight.SemiBold)
+            Text(achievement.description, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+        }
     }
 }
 

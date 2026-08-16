@@ -124,3 +124,86 @@ fun NeumorphicAction(
         content = content,
     )
 }
+
+/**
+ * Primary action based on the selected Neo-Tactile reference: a saturated cobalt face,
+ * refractive top edge and a deep directional shadow that collapses under the finger.
+ */
+@Composable
+fun NeoTactilePrimaryAction(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    content: @Composable BoxScope.() -> Unit,
+) {
+    val shape = RoundedCornerShape(24.dp)
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val faceOffset by animateDpAsState(
+        targetValue = if (enabled && isPressed) 7.dp else 0.dp,
+        animationSpec = spring(stiffness = 720f, dampingRatio = .76f),
+        label = "neoTactileFaceOffset",
+    )
+    val faceScale by animateFloatAsState(
+        targetValue = if (enabled && isPressed) .992f else 1f,
+        animationSpec = spring(stiffness = 760f, dampingRatio = .8f),
+        label = "neoTactileFaceScale",
+    )
+    val shadowAlpha by animateFloatAsState(
+        targetValue = if (enabled && isPressed) .34f else .82f,
+        animationSpec = spring(stiffness = 620f, dampingRatio = .82f),
+        label = "neoTactileShadowAlpha",
+    )
+
+    Box(
+        modifier = modifier.clickable(
+            interactionSource = interactionSource,
+            indication = null,
+            enabled = enabled,
+            onClick = onClick,
+        ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            Modifier.matchParentSize()
+                .offset(x = 8.dp, y = 11.dp)
+                .shadow(
+                    elevation = 20.dp,
+                    shape = shape,
+                    ambientColor = Color(0xFF071A46).copy(alpha = shadowAlpha),
+                    spotColor = Color(0xFF071A46).copy(alpha = shadowAlpha),
+                )
+                .background(Color(0xFF142A65).copy(alpha = shadowAlpha), shape),
+        )
+        Box(
+            Modifier.matchParentSize()
+                .offset(y = faceOffset)
+                .graphicsLayer {
+                    scaleX = faceScale
+                    scaleY = faceScale
+                }
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(Color(0xFF4D88FF), Color(0xFF315BF4)),
+                    ),
+                    shape,
+                )
+                .background(
+                    Brush.verticalGradient(
+                        0f to Color.White.copy(alpha = .22f),
+                        .28f to Color.Transparent,
+                        1f to Color(0xFF173BC8).copy(alpha = .18f),
+                    ),
+                    shape,
+                )
+                .border(
+                    width = 1.dp,
+                    brush = Brush.verticalGradient(
+                        listOf(Color.White.copy(alpha = .5f), Color(0xFF173BC8).copy(alpha = .55f)),
+                    ),
+                    shape = shape,
+                ),
+            contentAlignment = Alignment.Center,
+        ) { content() }
+    }
+}

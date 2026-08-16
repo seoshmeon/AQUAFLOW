@@ -33,4 +33,9 @@ sealed interface TrainingState {
     data class Finished(
         val resultsMillis: List<Long>,
     ) : TrainingState
+
+    data class Interrupted(
+        val resultsMillis: List<Long>,
+        val message: String,
+    ) : TrainingState
 }

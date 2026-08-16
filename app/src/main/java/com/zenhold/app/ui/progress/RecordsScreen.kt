@@ -1,6 +1,7 @@
 package com.zenhold.app.ui.progress
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -22,8 +23,13 @@ import androidx.compose.material.icons.rounded.History
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -37,7 +43,11 @@ import java.util.Date
 import java.util.Locale
 
 @Composable
-fun RecordsScreen(records: List<BreathHoldRecord>, modifier: Modifier = Modifier) {
+fun RecordsScreen(
+    sessions: List<SessionSummary>,
+    onSaveNote: (String, String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     BoxWithConstraints(modifier.fillMaxSize()) {
       val pagePadding = if (maxWidth < 360.dp) 16.dp else 24.dp
       Column(
@@ -51,12 +61,12 @@ fun RecordsScreen(records: List<BreathHoldRecord>, modifier: Modifier = Modifier
         Column(Modifier.padding(horizontal = pagePadding)) {
             Text("Рекорды", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.SemiBold)
             Text(
-                "Все завершённые задержки",
+                "Тренировки, подходы, ощущения и заметки",
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
         Spacer(Modifier.height(24.dp))
-        if (records.isEmpty()) {
+        if (sessions.isEmpty()) {
             Column(
                 Modifier.fillMaxSize().padding(32.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -76,7 +86,9 @@ fun RecordsScreen(records: List<BreathHoldRecord>, modifier: Modifier = Modifier
                 contentPadding = PaddingValues(horizontal = pagePadding, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(18.dp),
             ) {
-                items(records, key = { it.id }) { record -> RecordRow(record) }
+                items(sessions, key = { it.sessionId }) { session ->
+                    SessionHistoryCard(session, onSaveNote)
+                }
             }
         }
       }
@@ -84,33 +96,75 @@ fun RecordsScreen(records: List<BreathHoldRecord>, modifier: Modifier = Modifier
 }
 
 @Composable
-private fun RecordRow(record: BreathHoldRecord) {
-    val formattedDate = remember(record.timestamp) {
+private fun SessionHistoryCard(session: SessionSummary, onSaveNote: (String, String) -> Unit) {
+    var expanded by remember(session.sessionId) { mutableStateOf(false) }
+    var note by remember(session.sessionId, session.note) { mutableStateOf(session.note) }
+    val formattedDate = remember(session.timestamp) {
         SimpleDateFormat("d MMMM · HH:mm", Locale.forLanguageTag("ru-RU"))
-            .format(Date(record.timestamp))
+            .format(Date(session.timestamp))
     }
     NeumorphicPanel(
-        modifier = Modifier.fillMaxWidth().heightIn(min = if (record.comfortRating == 0) 92.dp else 108.dp),
+        modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded },
         shape = RoundedCornerShape(24.dp),
     ) {
-        Row(
-            Modifier.fillMaxSize().padding(horizontal = 20.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column {
-                Text(formattedDate, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text("Подход ${record.attemptNumber}", fontWeight = FontWeight.Medium)
-                if (record.comfortRating != 0) {
-                    Text(
-                        comfortLabel(record.comfortRating),
-                        fontSize = 11.sp,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
+        Column(Modifier.fillMaxWidth().padding(20.dp)) {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(formattedDate, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("${session.attempts.size} подх. · среднее ${formatDuration(session.averageMillis)}", fontWeight = FontWeight.Medium)
+                    if (session.note.isNotBlank() && !expanded) {
+                        Text(session.note, maxLines = 1, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                    }
+                }
+                Text(
+                    formatDuration(session.maximumMillis),
+                    color = MaterialTheme.colorScheme.primary,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Light,
+                )
+            }
+            if (expanded) {
+                Spacer(Modifier.height(14.dp))
+                session.attempts.forEach { RecordRow(it) }
+                Spacer(Modifier.height(10.dp))
+                OutlinedTextField(
+                    value = note,
+                    onValueChange = { note = it.take(500) },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Заметка о тренировке") },
+                    supportingText = { Text("Самочувствие, сон или важное наблюдение") },
+                    minLines = 2,
+                    shape = RoundedCornerShape(16.dp),
+                )
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    TextButton(onClick = {
+                        onSaveNote(session.sessionId, note)
+                        expanded = false
+                    }) { Text("Сохранить") }
                 }
             }
-            Text(formatDuration(record.holdDurationMillis), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Light)
         }
+    }
+}
+
+@Composable
+private fun RecordRow(record: BreathHoldRecord) {
+    Row(
+        Modifier.fillMaxWidth().padding(vertical = 7.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column {
+            Text("Подход ${record.attemptNumber}", fontWeight = FontWeight.Medium)
+            if (record.comfortRating != 0) {
+                Text(comfortLabel(record.comfortRating), fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
+            }
+        }
+        Text(formatDuration(record.holdDurationMillis), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Medium)
     }
 }
 

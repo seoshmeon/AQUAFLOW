@@ -12,4 +12,6 @@ class RoomRecordRepository @Inject constructor(
     override fun observeRecords(): Flow<List<BreathHoldRecord>> = dao.observeAll()
     override suspend fun save(record: BreathHoldRecord): Long = dao.insert(record)
     override suspend fun updateComfort(recordId: Long, rating: Int) = dao.updateComfort(recordId, rating)
+    override suspend fun updateSessionNote(sessionId: String, note: String) =
+        dao.updateSessionNote(sessionId, note)
 }

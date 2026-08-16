@@ -11,6 +11,7 @@ import androidx.compose.material.icons.rounded.Menu
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.StopCircle
 import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.rounded.HealthAndSafety
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -34,6 +35,7 @@ fun AppNavigationMenu(
     onSettings: () -> Unit,
     onProgress: () -> Unit,
     onRecords: () -> Unit,
+    onSafety: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -57,6 +59,7 @@ fun AppNavigationMenu(
             NavigationItem("Настройки", Icons.Rounded.Settings) { expanded = false; onSettings() }
             NavigationItem("График прогресса", Icons.AutoMirrored.Rounded.ShowChart) { expanded = false; onProgress() }
             NavigationItem("Рекорды", Icons.Rounded.History) { expanded = false; onRecords() }
+            NavigationItem("Безопасность", Icons.Rounded.HealthAndSafety) { expanded = false; onSafety() }
         }
     }
 }
@@ -70,6 +73,7 @@ fun TrainingMenu(
     onOpenSettings: () -> Unit,
     onOpenProgress: () -> Unit,
     onOpenRecords: () -> Unit,
+    onOpenSafety: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -123,6 +127,10 @@ fun TrainingMenu(
                 expanded = false
                 if (canStop) confirmation = TrainingExitAction.Records else onOpenRecords()
             }
+            NavigationItem("Безопасность", Icons.Rounded.HealthAndSafety) {
+                expanded = false
+                if (canStop) confirmation = TrainingExitAction.Safety else onOpenSafety()
+            }
         }
     }
 
@@ -147,6 +155,7 @@ fun TrainingMenu(
                         TrainingExitAction.Settings -> onOpenSettings()
                         TrainingExitAction.Progress -> onOpenProgress()
                         TrainingExitAction.Records -> onOpenRecords()
+                        TrainingExitAction.Safety -> onOpenSafety()
                     }
                 }) { Text(if (action == TrainingExitAction.Stop) "Завершить" else "Прервать") }
             },
@@ -168,4 +177,4 @@ private fun NavigationItem(
     )
 }
 
-private enum class TrainingExitAction { Stop, Home, Settings, Progress, Records }
+private enum class TrainingExitAction { Stop, Home, Settings, Progress, Records, Safety }

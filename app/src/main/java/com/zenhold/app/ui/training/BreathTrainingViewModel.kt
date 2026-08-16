@@ -210,6 +210,20 @@ class BreathTrainingViewModel @Inject constructor(
         else TrainingState.Finished(sessionResults.toList())
     }
 
+    fun interruptForSafety() {
+        if (_state.value !is TrainingState.Holding) return
+        timerJob?.cancel()
+        hiddenHoldTickerJob?.cancel()
+        holdGuardJob?.cancel()
+        holdStartedAtMillis = null
+        audio.stopPreparationMusic()
+        audio.stopHoldingMusic()
+        _state.value = TrainingState.Interrupted(
+            resultsMillis = sessionResults.toList(),
+            message = "Задержка остановлена, потому что приложение было свёрнуто или прервано.",
+        )
+    }
+
     fun returnHome() {
         finishNow()
         sessionResults.clear()

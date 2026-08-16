@@ -16,4 +16,5 @@ data class BreathHoldRecord(
     @ColumnInfo(defaultValue = "0") val comfortRating: Int = 0,
     @ColumnInfo(defaultValue = "3") val energyLevel: Int = 3,
     @ColumnInfo(defaultValue = "2") val stressLevel: Int = 2,
+    @ColumnInfo(defaultValue = "''") val sessionNote: String = "",
 )

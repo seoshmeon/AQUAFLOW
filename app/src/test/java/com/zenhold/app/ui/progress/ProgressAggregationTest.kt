@@ -4,6 +4,7 @@ import com.zenhold.app.data.local.BreathHoldRecord
 import java.time.LocalDateTime
 import java.time.ZoneId
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ProgressAggregationTest {
@@ -37,6 +38,36 @@ class ProgressAggregationTest {
 
         assertEquals(50_000L, state.comfortableAverageMillis)
         assertEquals(3, state.ratedAttemptCount)
+    }
+
+    @Test
+    fun monthPeriod_filtersChartAndComparesWithPreviousMonth() {
+        val now = LocalDateTime.of(2026, 8, 16, 12, 0)
+            .atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        val records = listOf(
+            record(40_000L, "july", 1, 2026, 7, 10),
+            record(60_000L, "august", 1, 2026, 8, 10),
+        )
+
+        val state = buildProgressState(records, ProgressPeriod.Month, now)
+
+        assertEquals(1, state.sessions.size)
+        assertEquals(60_000L, state.sessions.single().maximumMillis)
+        assertEquals(50f, state.comparisonPercent ?: 0f, 0.01f)
+    }
+
+    @Test
+    fun sessionSummary_keepsNoteAndUnlocksStableSession() {
+        val records = listOf(
+            record(60_000L, "session", 1, 2026, 8, 12).copy(sessionNote = "Спокойно"),
+            record(64_000L, "session", 2, 2026, 8, 12),
+            record(66_000L, "session", 3, 2026, 8, 12),
+        )
+
+        val state = buildProgressState(records)
+
+        assertEquals("Спокойно", state.sessionSummaries.single().note)
+        assertTrue(state.achievements.first { it.title == "Ровное дыхание" }.unlocked)
     }
 
     private fun record(

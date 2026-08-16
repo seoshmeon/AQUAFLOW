@@ -21,6 +21,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
@@ -28,6 +30,9 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.zenhold.app.domain.model.TrainingState
 import com.zenhold.app.domain.model.AppThemeMode
 import com.zenhold.app.ui.components.AppNavigationMenu
@@ -36,6 +41,7 @@ import com.zenhold.app.ui.components.WaveBackdrop
 import com.zenhold.app.ui.home.HomeScreen
 import com.zenhold.app.ui.home.HomeViewModel
 import com.zenhold.app.ui.home.SettingsScreen
+import com.zenhold.app.ui.home.SafetyScreen
 import com.zenhold.app.ui.progress.ProgressScreen
 import com.zenhold.app.ui.progress.ProgressViewModel
 import com.zenhold.app.ui.progress.RecordsScreen
@@ -45,6 +51,7 @@ import com.zenhold.app.ui.training.FinishedScreen
 import com.zenhold.app.ui.training.HoldScreen
 import com.zenhold.app.ui.training.PreparationScreen
 import com.zenhold.app.ui.training.RecoveryScreen
+import com.zenhold.app.ui.training.InterruptedScreen
 import com.zenhold.app.ui.training.PreTrainingScreen
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -57,7 +64,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private enum class Destination { Home, SessionPlan, Training, Settings, Progress, Records }
+private enum class Destination { Home, SessionPlan, Training, Settings, Progress, Records, Safety }
 
 @Composable
 private fun ZenHoldApp(
@@ -79,6 +86,18 @@ private fun ZenHoldApp(
     // Survives Activity recreation so an active training never continues behind HomeScreen.
     var destination by rememberSaveable { mutableStateOf(Destination.Home) }
     var confirmSystemBack by rememberSaveable { mutableStateOf(false) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val latestTrainingState by rememberUpdatedState(trainingState)
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_STOP && latestTrainingState is TrainingState.Holding) {
+                trainingViewModel.interruptForSafety()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     BackHandler(enabled = destination == Destination.Training) {
         if (trainingState is TrainingState.Idle) destination = Destination.Home
@@ -128,9 +147,14 @@ private fun ZenHoldApp(
                     )
                     Destination.Progress -> ProgressScreen(
                         state = progressState,
+                        onPeriodSelected = progressViewModel::selectPeriod,
                         onBack = { destination = Destination.Home },
                     )
-                    Destination.Records -> RecordsScreen(progressState.records)
+                    Destination.Records -> RecordsScreen(
+                        sessions = progressState.sessionSummaries,
+                        onSaveNote = progressViewModel::saveSessionNote,
+                    )
+                    Destination.Safety -> SafetyScreen()
                     Destination.Training -> when (val state = trainingState) {
                         TrainingState.Idle -> destination = Destination.Home
                         is TrainingState.Preparation -> PreparationScreen(state, trainingViewModel::skipPreparation)
@@ -147,12 +171,21 @@ private fun ZenHoldApp(
                                 destination = Destination.Home
                             },
                         )
+                        is TrainingState.Interrupted -> InterruptedScreen(
+                            state = state,
+                            onDone = {
+                                trainingViewModel.returnHome()
+                                destination = Destination.Home
+                            },
+                        )
                     }
                 }
 
                 if (destination == Destination.Training) {
                     TrainingMenu(
-                        canStop = trainingState !is TrainingState.Finished && trainingState !is TrainingState.Idle,
+                        canStop = trainingState !is TrainingState.Finished &&
+                            trainingState !is TrainingState.Interrupted &&
+                            trainingState !is TrainingState.Idle,
                         darkBackground = trainingState is TrainingState.Holding,
                         onStopTraining = trainingViewModel::finishNow,
                         onReturnHome = {
@@ -171,6 +204,10 @@ private fun ZenHoldApp(
                             trainingViewModel.returnHome()
                             destination = Destination.Records
                         },
+                        onOpenSafety = {
+                            trainingViewModel.returnHome()
+                            destination = Destination.Safety
+                        },
                         modifier = Modifier.align(Alignment.TopEnd),
                     )
                 } else {
@@ -179,6 +216,7 @@ private fun ZenHoldApp(
                         onSettings = { destination = Destination.Settings },
                         onProgress = { destination = Destination.Progress },
                         onRecords = { destination = Destination.Records },
+                        onSafety = { destination = Destination.Safety },
                         modifier = Modifier.align(Alignment.TopEnd),
                     )
                 }

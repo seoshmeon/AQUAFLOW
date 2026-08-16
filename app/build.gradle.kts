@@ -6,7 +6,7 @@ plugins {
     id("com.google.dagger.hilt.android")
 }
 
-val appVersionName = "1.3.1"
+val appVersionName = "1.4.0"
 
 android {
     namespace = "com.zenhold.app"
@@ -16,7 +16,7 @@ android {
         applicationId = "com.zenhold.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 6
+        versionCode = 7
         versionName = appVersionName
 
         testInstrumentationRunner = "com.zenhold.app.HiltTestRunner"

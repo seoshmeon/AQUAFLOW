@@ -120,6 +120,11 @@ private class FakeRecordRepository : RecordRepository {
         val index = recordId.toInt() - 1
         if (index >= 0) saved[index] = saved[index].copy(comfortRating = rating)
     }
+    override suspend fun updateSessionNote(sessionId: String, note: String) {
+        saved.indices.filter { saved[it].sessionId == sessionId }.forEach { index ->
+            saved[index] = saved[index].copy(sessionNote = note)
+        }
+    }
 }
 
 private class FakeAudioController : TrainingAudioController {

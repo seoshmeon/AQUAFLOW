@@ -20,6 +20,9 @@ interface RecordDao {
     @Query("UPDATE breath_hold_records SET comfortRating = :rating WHERE id = :recordId")
     suspend fun updateComfort(recordId: Long, rating: Int)
 
+    @Query("UPDATE breath_hold_records SET sessionNote = :note WHERE sessionId = :sessionId")
+    suspend fun updateSessionNote(sessionId: String, note: String)
+
     @Query("DELETE FROM breath_hold_records")
     suspend fun deleteAll()
 }
