@@ -45,6 +45,7 @@ import com.zenhold.app.ui.training.FinishedScreen
 import com.zenhold.app.ui.training.HoldScreen
 import com.zenhold.app.ui.training.PreparationScreen
 import com.zenhold.app.ui.training.RecoveryScreen
+import com.zenhold.app.ui.training.PreTrainingScreen
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -56,7 +57,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private enum class Destination { Home, Training, Settings, Progress, Records }
+private enum class Destination { Home, SessionPlan, Training, Settings, Progress, Records }
 
 @Composable
 private fun ZenHoldApp(
@@ -104,17 +105,26 @@ private fun ZenHoldApp(
                 when (destination) {
                     Destination.Home -> HomeScreen(
                         settings = settings,
-                        onStart = {
-                            trainingViewModel.startTraining(settings)
-                            destination = Destination.Training
-                        },
+                        onStart = { destination = Destination.SessionPlan },
                         onProgress = { destination = Destination.Progress },
                     )
                     Destination.Settings -> SettingsScreen(
                         settings = settings,
                         onAttemptsChanged = homeViewModel::setAttemptCount,
                         onRecoverySecondsChanged = homeViewModel::setRecoverySeconds,
+                        onPreparationSecondsChanged = homeViewModel::setPreparationSeconds,
+                        onPreparationMusicChanged = homeViewModel::setPreparationMusicEnabled,
+                        onHoldingMusicChanged = homeViewModel::setHoldingMusicEnabled,
+                        onFullScreenHoldGestureChanged = homeViewModel::setFullScreenHoldGesture,
                         onThemeModeChanged = homeViewModel::setThemeMode,
+                    )
+                    Destination.SessionPlan -> PreTrainingScreen(
+                        settings = settings,
+                        onStart = { checkIn ->
+                            trainingViewModel.startTraining(settings, checkIn)
+                            destination = Destination.Training
+                        },
+                        onBack = { destination = Destination.Home },
                     )
                     Destination.Progress -> ProgressScreen(
                         state = progressState,
@@ -123,9 +133,13 @@ private fun ZenHoldApp(
                     Destination.Records -> RecordsScreen(progressState.records)
                     Destination.Training -> when (val state = trainingState) {
                         TrainingState.Idle -> destination = Destination.Home
-                        is TrainingState.Preparation -> PreparationScreen(state)
-                        is TrainingState.Holding -> HoldScreen(trainingViewModel::stopHolding)
-                        is TrainingState.Recovering -> RecoveryScreen(state)
+                        is TrainingState.Preparation -> PreparationScreen(state, trainingViewModel::skipPreparation)
+                        is TrainingState.Holding -> HoldScreen(
+                            fullScreenGesture = state.fullScreenGesture,
+                            gestureEnabled = state.gestureEnabled,
+                            onStopHolding = trainingViewModel::stopHolding,
+                        )
+                        is TrainingState.Recovering -> RecoveryScreen(state, trainingViewModel::setComfortRating)
                         is TrainingState.Finished -> FinishedScreen(
                             state = state,
                             onDone = {

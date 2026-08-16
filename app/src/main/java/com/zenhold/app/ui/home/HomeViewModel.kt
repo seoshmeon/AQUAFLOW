@@ -28,6 +28,23 @@ class HomeViewModel @Inject constructor(
         settings.value.copy(recoveryDurationMillis = value.coerceIn(30, 600) * 1_000L),
     )
 
+    fun setPreparationSeconds(value: Int) = update(
+        settings.value.copy(
+            preparationDurationMillis = value.toLong().times(1_000L)
+                .takeIf { it in TrainingSettings.PREPARATION_OPTIONS_MILLIS }
+                ?: 30_000L,
+        ),
+    )
+
+    fun setPreparationMusicEnabled(value: Boolean) =
+        update(settings.value.copy(preparationMusicEnabled = value))
+
+    fun setHoldingMusicEnabled(value: Boolean) =
+        update(settings.value.copy(holdingMusicEnabled = value))
+
+    fun setFullScreenHoldGesture(value: Boolean) =
+        update(settings.value.copy(fullScreenHoldGesture = value))
+
     fun setThemeMode(value: AppThemeMode) = update(settings.value.copy(themeMode = value))
 
     private fun update(value: TrainingSettings) {

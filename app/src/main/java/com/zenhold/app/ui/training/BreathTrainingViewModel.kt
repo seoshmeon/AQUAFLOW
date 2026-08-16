@@ -6,6 +6,8 @@ import com.zenhold.app.audio.TrainingAudioController
 import com.zenhold.app.data.local.BreathHoldRecord
 import com.zenhold.app.domain.model.TrainingSettings
 import com.zenhold.app.domain.model.TrainingState
+import com.zenhold.app.domain.model.SessionCheckIn
+import com.zenhold.app.domain.model.ComfortRating
 import com.zenhold.app.domain.repository.RecordRepository
 import com.zenhold.app.util.ElapsedRealtimeClock
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -29,20 +31,27 @@ class BreathTrainingViewModel @Inject constructor(
 
     private var timerJob: Job? = null
     private var hiddenHoldTickerJob: Job? = null
+    private var holdGuardJob: Job? = null
     private var holdStartedAtMillis: Long? = null
     private var hiddenElapsedMillis: Long = 0L
     private var settings = TrainingSettings()
+    private var checkIn = SessionCheckIn()
     private var currentAttempt = 1
     private var sessionId = ""
     private val sessionResults = mutableListOf<Long>()
+    private val savedRecordIds = mutableMapOf<Int, Long>()
+    private val pendingComfortRatings = mutableMapOf<Int, ComfortRating>()
 
-    fun startTraining(selectedSettings: TrainingSettings) {
+    fun startTraining(selectedSettings: TrainingSettings, sessionCheckIn: SessionCheckIn = SessionCheckIn()) {
         if (_state.value !is TrainingState.Idle && _state.value !is TrainingState.Finished) return
 
         settings = selectedSettings
+        checkIn = sessionCheckIn
         currentAttempt = 1
         sessionId = UUID.randomUUID().toString()
         sessionResults.clear()
+        savedRecordIds.clear()
+        pendingComfortRatings.clear()
         startPreparation()
     }
 
@@ -50,19 +59,21 @@ class BreathTrainingViewModel @Inject constructor(
         timerJob?.cancel()
         val startedAt = clock.nowMillis()
         _state.value = TrainingState.Preparation(
-            remainingMillis = PREPARATION_MILLIS,
-            totalMillis = PREPARATION_MILLIS,
+            remainingMillis = settings.preparationDurationMillis,
+            totalMillis = settings.preparationDurationMillis,
             attempt = currentAttempt,
             totalAttempts = settings.attemptCount,
         )
-        viewModelScope.launch { runCatching { audio.startPreparationMusic() } }
+        if (settings.preparationMusicEnabled) {
+            viewModelScope.launch { runCatching { audio.startPreparationMusic() } }
+        }
 
         timerJob = viewModelScope.launch {
             while (true) {
-                val remaining = (PREPARATION_MILLIS - (clock.nowMillis() - startedAt)).coerceAtLeast(0L)
+                val remaining = (settings.preparationDurationMillis - (clock.nowMillis() - startedAt)).coerceAtLeast(0L)
                 _state.value = TrainingState.Preparation(
                     remainingMillis = remaining,
-                    totalMillis = PREPARATION_MILLIS,
+                    totalMillis = settings.preparationDurationMillis,
                     attempt = currentAttempt,
                     totalAttempts = settings.attemptCount,
                 )
@@ -73,13 +84,30 @@ class BreathTrainingViewModel @Inject constructor(
         }
     }
 
+    fun skipPreparation() {
+        if (_state.value !is TrainingState.Preparation) return
+        timerJob?.cancel()
+        timerJob = viewModelScope.launch { beginHolding() }
+    }
+
     private suspend fun beginHolding() {
         audio.stopPreparationMusic()
         runCatching { audio.playTransitionCue() }
-        runCatching { audio.startHoldingMusic() }
+        if (settings.holdingMusicEnabled) runCatching { audio.startHoldingMusic() }
         holdStartedAtMillis = clock.nowMillis()
         hiddenElapsedMillis = 0L
-        _state.value = TrainingState.Holding(currentAttempt, settings.attemptCount)
+        _state.value = TrainingState.Holding(
+            attempt = currentAttempt,
+            totalAttempts = settings.attemptCount,
+            fullScreenGesture = settings.fullScreenHoldGesture,
+            gestureEnabled = false,
+        )
+        holdGuardJob?.cancel()
+        holdGuardJob = viewModelScope.launch {
+            delay(HOLD_GESTURE_GUARD_MILLIS)
+            val holding = _state.value as? TrainingState.Holding ?: return@launch
+            _state.value = holding.copy(gestureEnabled = true)
+        }
 
         // Kept private by design: this timer must never become observable UI state.
         hiddenHoldTickerJob?.cancel()
@@ -94,9 +122,11 @@ class BreathTrainingViewModel @Inject constructor(
     /** Idempotent: rapid extra taps cannot create duplicate records or recovery timers. */
     fun stopHolding() {
         val holdingState = _state.value as? TrainingState.Holding ?: return
+        if (!holdingState.gestureEnabled) return
         val startedAt = holdStartedAtMillis ?: return
         holdStartedAtMillis = null
         hiddenHoldTickerJob?.cancel()
+        holdGuardJob?.cancel()
         audio.stopHoldingMusic()
 
         val duration = (clock.nowMillis() - startedAt).coerceAtLeast(1L)
@@ -105,15 +135,21 @@ class BreathTrainingViewModel @Inject constructor(
 
         viewModelScope.launch {
             runCatching {
-                records.save(
+                val recordId = records.save(
                     BreathHoldRecord(
                         holdDurationMillis = duration,
                         recoveryDurationMillis = settings.recoveryDurationMillis,
                         timestamp = System.currentTimeMillis(),
                         sessionId = sessionId,
                         attemptNumber = completedAttempt,
+                        energyLevel = checkIn.energyLevel,
+                        stressLevel = checkIn.stressLevel,
                     ),
                 )
+                savedRecordIds[completedAttempt] = recordId
+                pendingComfortRatings.remove(completedAttempt)?.let { rating ->
+                    records.updateComfort(recordId, rating.storedValue)
+                }
             }
         }
         startRecovery(duration, completedAttempt)
@@ -148,11 +184,25 @@ class BreathTrainingViewModel @Inject constructor(
             totalRecoveryMillis = settings.recoveryDurationMillis,
             completedAttempt = attempt,
             totalAttempts = settings.attemptCount,
+            comfortRating = (_state.value as? TrainingState.Recovering)?.comfortRating,
         )
+
+    fun setComfortRating(rating: ComfortRating) {
+        val recovery = _state.value as? TrainingState.Recovering ?: return
+        _state.value = recovery.copy(comfortRating = rating)
+        pendingComfortRatings[recovery.completedAttempt] = rating
+        viewModelScope.launch {
+            savedRecordIds[recovery.completedAttempt]?.let { recordId ->
+                runCatching { records.updateComfort(recordId, rating.storedValue) }
+                pendingComfortRatings.remove(recovery.completedAttempt)
+            }
+        }
+    }
 
     fun finishNow() {
         timerJob?.cancel()
         hiddenHoldTickerJob?.cancel()
+        holdGuardJob?.cancel()
         holdStartedAtMillis = null
         audio.stopPreparationMusic()
         audio.stopHoldingMusic()
@@ -169,6 +219,7 @@ class BreathTrainingViewModel @Inject constructor(
     override fun onCleared() {
         timerJob?.cancel()
         hiddenHoldTickerJob?.cancel()
+        holdGuardJob?.cancel()
         audio.stopPreparationMusic()
         audio.stopHoldingMusic()
         super.onCleared()
@@ -178,5 +229,6 @@ class BreathTrainingViewModel @Inject constructor(
         const val PREPARATION_MILLIS = 30_000L
         private const val TICK_MILLIS = 100L
         private const val HIDDEN_TIMER_TICK_MILLIS = 50L
+        private const val HOLD_GESTURE_GUARD_MILLIS = 1_500L
     }
 }

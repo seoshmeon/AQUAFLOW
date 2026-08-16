@@ -3,6 +3,7 @@ package com.zenhold.app.data.repository
 import android.content.Context
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -24,6 +25,10 @@ class DataStoreSettingsRepository @Inject constructor(
     private object Keys {
         val attempts = intPreferencesKey("attempt_count")
         val recovery = longPreferencesKey("recovery_duration_ms")
+        val preparation = longPreferencesKey("preparation_duration_ms")
+        val preparationMusic = booleanPreferencesKey("preparation_music_enabled")
+        val holdingMusic = booleanPreferencesKey("holding_music_enabled")
+        val fullScreenHoldGesture = booleanPreferencesKey("full_screen_hold_gesture")
         val themeMode = stringPreferencesKey("theme_mode")
     }
 
@@ -32,6 +37,12 @@ class DataStoreSettingsRepository @Inject constructor(
             attemptCount = (values[Keys.attempts] ?: 4).coerceIn(1, 10),
             recoveryDurationMillis = (values[Keys.recovery] ?: 120_000L)
                 .coerceIn(30_000L, 600_000L),
+            preparationDurationMillis = values[Keys.preparation]
+                ?.takeIf { it in TrainingSettings.PREPARATION_OPTIONS_MILLIS }
+                ?: 30_000L,
+            preparationMusicEnabled = values[Keys.preparationMusic] ?: true,
+            holdingMusicEnabled = values[Keys.holdingMusic] ?: true,
+            fullScreenHoldGesture = values[Keys.fullScreenHoldGesture] ?: true,
             themeMode = values[Keys.themeMode]
                 ?.let { stored -> AppThemeMode.entries.firstOrNull { it.name == stored } }
                 ?: AppThemeMode.System,
@@ -42,6 +53,10 @@ class DataStoreSettingsRepository @Inject constructor(
         context.trainingDataStore.edit { values ->
             values[Keys.attempts] = settings.attemptCount
             values[Keys.recovery] = settings.recoveryDurationMillis
+            values[Keys.preparation] = settings.preparationDurationMillis
+            values[Keys.preparationMusic] = settings.preparationMusicEnabled
+            values[Keys.holdingMusic] = settings.holdingMusicEnabled
+            values[Keys.fullScreenHoldGesture] = settings.fullScreenHoldGesture
             values[Keys.themeMode] = settings.themeMode.name
         }
     }

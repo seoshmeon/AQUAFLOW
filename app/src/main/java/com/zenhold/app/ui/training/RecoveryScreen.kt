@@ -13,10 +13,15 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -30,12 +35,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zenhold.app.domain.model.TrainingState
+import com.zenhold.app.domain.model.ComfortRating
+import com.zenhold.app.ui.components.NeumorphicAction
 import com.zenhold.app.ui.components.NeumorphicPanel
 import com.zenhold.app.ui.util.formatDuration
 import com.zenhold.app.ui.util.keepScreenOn
 
 @Composable
-fun RecoveryScreen(state: TrainingState.Recovering, modifier: Modifier = Modifier) {
+fun RecoveryScreen(
+    state: TrainingState.Recovering,
+    onComfortSelected: (ComfortRating) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val accent = MaterialTheme.colorScheme.primary
     val transition = rememberInfiniteTransition(label = "recovery breath")
     val breathScale by transition.animateFloat(
@@ -50,7 +61,7 @@ fun RecoveryScreen(state: TrainingState.Recovering, modifier: Modifier = Modifie
 
     BoxWithConstraints(modifier.fillMaxSize().keepScreenOn()) {
       val pagePadding = if (maxWidth < 360.dp || maxHeight < 650.dp) 18.dp else 28.dp
-      val circleSize = minOf(maxWidth * .72f, maxHeight * .42f, 300.dp).coerceAtLeast(176.dp)
+      val circleSize = minOf(maxWidth * .68f, maxHeight * .34f, 270.dp).coerceAtLeast(164.dp)
       Column(
         Modifier.align(Alignment.Center).fillMaxSize().padding(pagePadding),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -85,10 +96,54 @@ fun RecoveryScreen(state: TrainingState.Recovering, modifier: Modifier = Modifie
             }
         }
 
+        ComfortPicker(state.comfortRating, onComfortSelected)
+
         Text(
             "Завершён подход ${state.completedAttempt} из ${state.totalAttempts}",
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
       }
+    }
+}
+
+@Composable
+private fun ComfortPicker(selected: ComfortRating?, onSelected: (ComfortRating) -> Unit) {
+    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        Text("Как ощущалась задержка?", fontWeight = FontWeight.SemiBold)
+        Text("Оценка не влияет на таймер отдыха", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+        Spacer(Modifier.height(10.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            ComfortAction("Легко", ComfortRating.Easy, selected, onSelected, Modifier.weight(1f))
+            ComfortAction("Комфортно", ComfortRating.Comfortable, selected, onSelected, Modifier.weight(1f))
+        }
+        Spacer(Modifier.height(10.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            ComfortAction("Дискомфорт", ComfortRating.Uncomfortable, selected, onSelected, Modifier.weight(1f))
+            ComfortAction("Слишком тяжело", ComfortRating.TooHard, selected, onSelected, Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+private fun ComfortAction(
+    label: String,
+    rating: ComfortRating,
+    selected: ComfortRating?,
+    onSelected: (ComfortRating) -> Unit,
+    modifier: Modifier,
+) {
+    val active = selected == rating
+    NeumorphicAction(
+        onClick = { onSelected(rating) },
+        modifier = modifier.height(44.dp),
+        shape = RoundedCornerShape(7.dp),
+        color = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
+    ) {
+        Text(
+            label,
+            color = if (active) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+            fontSize = 12.sp,
+            fontWeight = if (active) FontWeight.SemiBold else FontWeight.Normal,
+        )
     }
 }

@@ -68,11 +68,21 @@ fun ProgressScreen(state: ProgressUiState, onBack: () -> Unit, modifier: Modifie
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 MetricCard("Личный рекорд", formatDuration(state.personalBestMillis), Modifier.fillMaxWidth())
                 MetricCard("Среднее · 10", formatDuration(state.recentAverageMillis), Modifier.fillMaxWidth())
+                MetricCard(
+                    "Комфортное среднее",
+                    if (state.ratedAttemptCount == 0) "—" else formatDuration(state.comfortableAverageMillis),
+                    Modifier.fillMaxWidth(),
+                )
             }
         } else {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 MetricCard("Личный рекорд", formatDuration(state.personalBestMillis), Modifier.weight(1f))
                 MetricCard("Среднее · 10", formatDuration(state.recentAverageMillis), Modifier.weight(1f))
+                MetricCard(
+                    "Комфортное среднее",
+                    if (state.ratedAttemptCount == 0) "—" else formatDuration(state.comfortableAverageMillis),
+                    Modifier.weight(1f),
+                )
             }
         }
         Spacer(Modifier.height(16.dp))

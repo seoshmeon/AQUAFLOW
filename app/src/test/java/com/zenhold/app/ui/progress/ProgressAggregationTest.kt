@@ -25,6 +25,20 @@ class ProgressAggregationTest {
         assertEquals(70_000L, state.months[1].maximumMillis)
     }
 
+    @Test
+    fun comfortableAverage_usesOnlyEasyAndComfortableAttempts() {
+        val records = listOf(
+            record(40_000L, "session", 1, 2026, 1, 12).copy(comfortRating = 1),
+            record(60_000L, "session", 2, 2026, 1, 12).copy(comfortRating = 2),
+            record(90_000L, "session", 3, 2026, 1, 12).copy(comfortRating = 4),
+        )
+
+        val state = buildProgressState(records)
+
+        assertEquals(50_000L, state.comfortableAverageMillis)
+        assertEquals(3, state.ratedAttemptCount)
+    }
+
     private fun record(
         duration: Long,
         sessionId: String,

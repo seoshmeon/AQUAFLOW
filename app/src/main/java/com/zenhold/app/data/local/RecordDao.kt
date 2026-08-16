@@ -17,6 +17,9 @@ interface RecordDao {
     @Query("SELECT * FROM breath_hold_records ORDER BY timestamp DESC, id DESC LIMIT :limit")
     suspend fun latest(limit: Int): List<BreathHoldRecord>
 
+    @Query("UPDATE breath_hold_records SET comfortRating = :rating WHERE id = :recordId")
+    suspend fun updateComfort(recordId: Long, rating: Int)
+
     @Query("DELETE FROM breath_hold_records")
     suspend fun deleteAll()
 }

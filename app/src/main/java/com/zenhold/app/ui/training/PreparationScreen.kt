@@ -10,9 +10,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -26,11 +29,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zenhold.app.domain.model.TrainingState
 import com.zenhold.app.ui.components.NeumorphicPanel
+import com.zenhold.app.ui.components.NeumorphicAction
 import com.zenhold.app.ui.util.formatDuration
 import com.zenhold.app.ui.util.keepScreenOn
 
 @Composable
-fun PreparationScreen(state: TrainingState.Preparation, modifier: Modifier = Modifier) {
+fun PreparationScreen(
+    state: TrainingState.Preparation,
+    onSkip: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val accent = MaterialTheme.colorScheme.primary
     val transition = rememberInfiniteTransition(label = "preparation")
     val pulse by transition.animateFloat(
@@ -57,10 +65,19 @@ fun PreparationScreen(state: TrainingState.Preparation, modifier: Modifier = Mod
             Text(formatDuration(state.remainingMillis), fontSize = 48.sp, fontWeight = FontWeight.Light)
             Text("Дышите спокойно", color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        Text(
-            "Подход ${state.attempt} из ${state.totalAttempts}",
-            modifier = Modifier.align(Alignment.BottomCenter).padding(32.dp),
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        Column(
+            modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(28.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                "Подход ${state.attempt} из ${state.totalAttempts}",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            NeumorphicAction(
+                onClick = onSkip,
+                modifier = Modifier.fillMaxWidth().padding(top = 12.dp).height(48.dp),
+                shape = RoundedCornerShape(7.dp),
+            ) { Text("Пропустить подготовку") }
+        }
     }
 }

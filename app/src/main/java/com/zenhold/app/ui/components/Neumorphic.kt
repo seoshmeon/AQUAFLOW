@@ -81,6 +81,7 @@ fun NeumorphicPanel(
 fun NeumorphicAction(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
     shape: Shape = RoundedCornerShape(7.dp),
     color: Color = Color.Unspecified,
     contentAlignment: Alignment = Alignment.Center,
@@ -89,17 +90,17 @@ fun NeumorphicAction(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val pressedScale by animateFloatAsState(
-        targetValue = if (isPressed) 0.985f else 1f,
+        targetValue = if (enabled && isPressed) 0.985f else 1f,
         animationSpec = spring(stiffness = 700f, dampingRatio = 0.72f),
         label = "neumorphicPress",
     )
     val pressedOffset by animateDpAsState(
-        targetValue = if (isPressed) 2.dp else 0.dp,
+        targetValue = if (enabled && isPressed) 2.dp else 0.dp,
         animationSpec = spring(stiffness = 650f, dampingRatio = .78f),
         label = "neumorphicDepth",
     )
     val actionElevation by animateDpAsState(
-        targetValue = if (isPressed) 4.dp else 14.dp,
+        targetValue = if (enabled && isPressed) 4.dp else 14.dp,
         animationSpec = spring(stiffness = 620f, dampingRatio = .8f),
         label = "neumorphicElevation",
     )
@@ -113,6 +114,7 @@ fun NeumorphicAction(
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
+                enabled = enabled,
                 onClick = onClick,
             ),
         shape = shape,

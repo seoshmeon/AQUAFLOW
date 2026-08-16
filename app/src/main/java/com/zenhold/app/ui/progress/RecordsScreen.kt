@@ -89,7 +89,7 @@ private fun RecordRow(record: BreathHoldRecord) {
             .format(Date(record.timestamp))
     }
     NeumorphicPanel(
-        modifier = Modifier.fillMaxWidth().height(92.dp),
+        modifier = Modifier.fillMaxWidth().height(if (record.comfortRating == 0) 92.dp else 108.dp),
         shape = RoundedCornerShape(24.dp),
     ) {
         Row(
@@ -100,8 +100,23 @@ private fun RecordRow(record: BreathHoldRecord) {
             Column {
                 Text(formattedDate, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text("Подход ${record.attemptNumber}", fontWeight = FontWeight.Medium)
+                if (record.comfortRating != 0) {
+                    Text(
+                        comfortLabel(record.comfortRating),
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
             }
             Text(formatDuration(record.holdDurationMillis), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Light)
         }
     }
+}
+
+private fun comfortLabel(value: Int): String = when (value) {
+    1 -> "Легко"
+    2 -> "Комфортно"
+    3 -> "Был дискомфорт"
+    4 -> "Слишком тяжело"
+    else -> "Без оценки"
 }

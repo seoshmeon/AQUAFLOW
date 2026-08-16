@@ -41,7 +41,12 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 
 @Composable
-fun HoldScreen(onStopHolding: () -> Unit, modifier: Modifier = Modifier) {
+fun HoldScreen(
+    fullScreenGesture: Boolean,
+    gestureEnabled: Boolean,
+    onStopHolding: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val view = LocalView.current
     DisposableEffect(view) {
         val window = (view.context as? Activity)?.window
@@ -66,11 +71,17 @@ fun HoldScreen(onStopHolding: () -> Unit, modifier: Modifier = Modifier) {
         animationSpec = infiniteRepeatable(tween(2_400), RepeatMode.Reverse),
         label = "target pulse",
     )
+    val gestureModifier = if (fullScreenGesture && gestureEnabled) {
+        Modifier.pointerInput(onStopHolding) {
+            detectTapGestures(onDoubleTap = { onStopHolding() })
+        }
+    } else Modifier
     BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
             .background(Color(0xFF010202))
-            .keepScreenOn(),
+            .keepScreenOn()
+            .then(gestureModifier),
         contentAlignment = Alignment.Center,
     ) {
         val targetSize = minOf(maxWidth * .58f, maxHeight * .4f, 250.dp).coerceAtLeast(180.dp)
@@ -85,9 +96,11 @@ fun HoldScreen(onStopHolding: () -> Unit, modifier: Modifier = Modifier) {
                         contentDescription = "Зона завершения задержки. Коснитесь дважды"
                         onClick(label = "Завершить задержку") { onStopHolding(); true }
                     }
-                    .pointerInput(onStopHolding) {
-                        detectTapGestures(onDoubleTap = { onStopHolding() })
-                    },
+                    .then(
+                        if (gestureEnabled) Modifier.pointerInput(onStopHolding) {
+                            detectTapGestures(onDoubleTap = { onStopHolding() })
+                        } else Modifier,
+                    ),
                 contentAlignment = Alignment.Center,
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -107,7 +120,11 @@ fun HoldScreen(onStopHolding: () -> Unit, modifier: Modifier = Modifier) {
                 }
             }
             Text(
-                "Когда тело спокойно попросит вдох",
+                when {
+                    !gestureEnabled -> "Зона завершения активируется"
+                    fullScreenGesture -> "Два касания в любом месте"
+                    else -> "Два касания внутри круга"
+                },
                 modifier = Modifier.padding(top = 28.dp),
                 color = Color.White.copy(alpha = 0.34f),
                 fontSize = 12.sp,

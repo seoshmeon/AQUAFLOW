@@ -43,7 +43,15 @@ class BreathTrainingViewModelTest {
 
         advanceTimeBy(BreathTrainingViewModel.PREPARATION_MILLIS)
         runCurrent()
-        assertEquals(TrainingState.Holding(attempt = 1, totalAttempts = 1), viewModel.state.value)
+        assertEquals(
+            TrainingState.Holding(
+                attempt = 1,
+                totalAttempts = 1,
+                fullScreenGesture = true,
+                gestureEnabled = false,
+            ),
+            viewModel.state.value,
+        )
 
         advanceTimeBy(42_000L)
         viewModel.stopHolding()
@@ -107,6 +115,10 @@ private class FakeRecordRepository : RecordRepository {
         saved += record
         records.value = saved.toList()
         return saved.size.toLong()
+    }
+    override suspend fun updateComfort(recordId: Long, rating: Int) {
+        val index = recordId.toInt() - 1
+        if (index >= 0) saved[index] = saved[index].copy(comfortRating = rating)
     }
 }
 

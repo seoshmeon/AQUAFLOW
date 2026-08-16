@@ -37,6 +37,8 @@ data class ProgressUiState(
     val records: List<BreathHoldRecord> = emptyList(),
     val personalBestMillis: Long = 0L,
     val recentAverageMillis: Long = 0L,
+    val comfortableAverageMillis: Long = 0L,
+    val ratedAttemptCount: Int = 0,
 )
 
 @HiltViewModel
@@ -73,11 +75,19 @@ internal fun buildProgressState(records: List<BreathHoldRecord>): ProgressUiStat
                 sessionCount = attempts.map { it.sessionId }.distinct().size,
             )
         }.sortedBy { it.yearMonth }
+        val comfortableRecords = records.filter { it.comfortRating == 1 || it.comfortRating == 2 }
         return ProgressUiState(
             sessions = sessions,
             months = months,
             records = records.sortedByDescending { it.timestamp },
             personalBestMillis = records.maxOf { it.holdDurationMillis },
             recentAverageMillis = records.takeLast(10).map { it.holdDurationMillis }.average().toLong(),
+            comfortableAverageMillis = comfortableRecords
+                .takeIf { it.isNotEmpty() }
+                ?.map { it.holdDurationMillis }
+                ?.average()
+                ?.toLong()
+                ?: 0L,
+            ratedAttemptCount = records.count { it.comfortRating != 0 },
         )
 }

@@ -143,6 +143,7 @@ private fun SessionOverview(settings: TrainingSettings, modifier: Modifier = Mod
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                 SessionMetric("ПОДХОДЫ", settings.attemptCount.toString(), Modifier.weight(1f))
+                SessionMetric("ПОДГОТОВКА", formatDuration(settings.preparationDurationMillis), Modifier.weight(1f))
                 SessionMetric("ОТДЫХ", formatDuration(settings.recoveryDurationMillis), Modifier.weight(1f))
             }
         }
