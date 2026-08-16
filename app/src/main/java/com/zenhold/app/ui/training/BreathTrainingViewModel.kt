@@ -29,6 +29,8 @@ class BreathTrainingViewModel @Inject constructor(
 ) : ViewModel() {
     private val _state = MutableStateFlow<TrainingState>(TrainingState.Idle)
     val state: StateFlow<TrainingState> = _state.asStateFlow()
+    private val _resumableSession = MutableStateFlow<TrainingSessionEntity?>(null)
+    val resumableSession: StateFlow<TrainingSessionEntity?> = _resumableSession.asStateFlow()
 
     private var timerJob: Job? = null
     private var hiddenHoldTickerJob: Job? = null
@@ -36,6 +38,8 @@ class BreathTrainingViewModel @Inject constructor(
     private var sessionCreateJob: Job? = null
     private var holdStartedAtMillis: Long? = null
     private var hiddenElapsedMillis: Long = 0L
+    private var recoveryDeadlineMillis: Long = 0L
+    private var recoveryTotalMillis: Long = 0L
     private var settings = TrainingSettings()
     private var checkIn = SessionCheckIn()
     private var currentAttempt = 1
@@ -45,14 +49,29 @@ class BreathTrainingViewModel @Inject constructor(
     private val savedRecordIds = mutableMapOf<Int, Long>()
     private val pendingComfortRatings = mutableMapOf<Int, ComfortRating>()
 
+    init {
+        viewModelScope.launch { _resumableSession.value = records.getActiveSession() }
+    }
+
     fun startTraining(selectedSettings: TrainingSettings, sessionCheckIn: SessionCheckIn = SessionCheckIn()) {
         if (_state.value !is TrainingState.Idle && _state.value !is TrainingState.Finished) return
 
+        _resumableSession.value?.let { previous ->
+            viewModelScope.launch {
+                records.finishSession(
+                    previous.sessionId,
+                    TrainingSessionEntity.STATUS_STOPPED,
+                    "Начата новая тренировка",
+                )
+            }
+            _resumableSession.value = null
+        }
         settings = selectedSettings
         audio.configure(
             musicVolumePercent = settings.musicVolumePercent,
             cueVolumePercent = settings.cueVolumePercent,
             vibrationEnabled = settings.vibrationEnabled,
+            cueStyle = settings.cueStyle,
         )
         checkIn = sessionCheckIn
         currentAttempt = 1
@@ -75,6 +94,62 @@ class BreathTrainingViewModel @Inject constructor(
             )
         }
         startPreparation()
+    }
+
+    /** Resumes only from a fresh preparation phase; an interrupted hold is never resumed. */
+    fun resumeTraining(selectedSettings: TrainingSettings) {
+        val session = _resumableSession.value ?: return
+        if (_state.value !is TrainingState.Idle) return
+        _state.value = TrainingState.Preparation(
+            remainingMillis = session.preparationDurationMillis,
+            totalMillis = session.preparationDurationMillis,
+            attempt = (session.completedAttempts + 1).coerceAtMost(session.plannedAttempts),
+            totalAttempts = session.plannedAttempts,
+        )
+        viewModelScope.launch {
+            val previousRecords = records.getSessionRecords(session.sessionId)
+            if (session.completedAttempts >= session.plannedAttempts) {
+                records.finishSession(session.sessionId, TrainingSessionEntity.STATUS_COMPLETED)
+                _resumableSession.value = null
+                _state.value = TrainingState.Finished(previousRecords.map { it.holdDurationMillis })
+                return@launch
+            }
+            settings = selectedSettings.copy(
+                attemptCount = session.plannedAttempts,
+                preparationDurationMillis = session.preparationDurationMillis,
+                recoveryDurationMillis = session.recoveryDurationMillis,
+            )
+            audio.configure(
+                settings.musicVolumePercent,
+                settings.cueVolumePercent,
+                settings.vibrationEnabled,
+                settings.cueStyle,
+            )
+            checkIn = SessionCheckIn(session.energyLevel, session.stressLevel)
+            sessionId = session.sessionId
+            currentAttempt = session.completedAttempts + 1
+            sessionFinalized = false
+            sessionCreateJob = null
+            sessionResults.clear()
+            sessionResults += previousRecords.map { it.holdDurationMillis }
+            savedRecordIds.clear()
+            previousRecords.forEach { savedRecordIds[it.attemptNumber] = it.id }
+            pendingComfortRatings.clear()
+            _resumableSession.value = null
+            startPreparation()
+        }
+    }
+
+    fun discardResumableSession() {
+        val session = _resumableSession.value ?: return
+        _resumableSession.value = null
+        viewModelScope.launch {
+            records.finishSession(
+                session.sessionId,
+                TrainingSessionEntity.STATUS_STOPPED,
+                "Незавершённая тренировка закрыта пользователем",
+            )
+        }
     }
 
     private fun startPreparation() {
@@ -181,36 +256,61 @@ class BreathTrainingViewModel @Inject constructor(
 
     private fun startRecovery(holdDuration: Long, completedAttempt: Int) {
         timerJob?.cancel()
-        val startedAt = clock.nowMillis()
-        _state.value = recoveryState(holdDuration, settings.recoveryDurationMillis, completedAttempt)
+        recoveryTotalMillis = settings.recoveryDurationMillis
+        recoveryDeadlineMillis = clock.nowMillis() + recoveryTotalMillis
+        _state.value = recoveryState(
+            holdDuration,
+            recoveryTotalMillis,
+            completedAttempt,
+            recoveryTotalMillis,
+        )
         timerJob = viewModelScope.launch {
             while (true) {
-                val remaining = (settings.recoveryDurationMillis - (clock.nowMillis() - startedAt))
-                    .coerceAtLeast(0L)
-                _state.value = recoveryState(holdDuration, remaining, completedAttempt)
+                val remaining = (recoveryDeadlineMillis - clock.nowMillis()).coerceAtLeast(0L)
+                _state.value = recoveryState(holdDuration, remaining, completedAttempt, recoveryTotalMillis)
                 if (remaining == 0L) break
                 delay(TICK_MILLIS)
             }
-
-            if (completedAttempt >= settings.attemptCount) {
-                finalizeSession(TrainingSessionEntity.STATUS_COMPLETED)
-                _state.value = TrainingState.Finished(sessionResults.toList())
-            } else {
-                currentAttempt = completedAttempt + 1
-                beginHolding()
-            }
+            advanceAfterRecovery(completedAttempt)
         }
     }
 
-    private fun recoveryState(holdDuration: Long, remaining: Long, attempt: Int) =
+    private fun recoveryState(holdDuration: Long, remaining: Long, attempt: Int, total: Long) =
         TrainingState.Recovering(
             holdDurationMillis = holdDuration,
             remainingMillis = remaining,
-            totalRecoveryMillis = settings.recoveryDurationMillis,
+            totalRecoveryMillis = total,
             completedAttempt = attempt,
             totalAttempts = settings.attemptCount,
             comfortRating = (_state.value as? TrainingState.Recovering)?.comfortRating,
         )
+
+    fun extendRecovery() {
+        val recovery = _state.value as? TrainingState.Recovering ?: return
+        recoveryDeadlineMillis += RECOVERY_EXTENSION_MILLIS
+        recoveryTotalMillis += RECOVERY_EXTENSION_MILLIS
+        _state.value = recovery.copy(
+            remainingMillis = recovery.remainingMillis + RECOVERY_EXTENSION_MILLIS,
+            totalRecoveryMillis = recoveryTotalMillis,
+        )
+    }
+
+    fun completeRecoveryEarly() {
+        val recovery = _state.value as? TrainingState.Recovering ?: return
+        timerJob?.cancel()
+        timerJob = viewModelScope.launch { advanceAfterRecovery(recovery.completedAttempt) }
+    }
+
+    private suspend fun advanceAfterRecovery(completedAttempt: Int) {
+        if (completedAttempt >= settings.attemptCount) {
+            runCatching { audio.playTransitionCue() }
+            finalizeSession(TrainingSessionEntity.STATUS_COMPLETED)
+            _state.value = TrainingState.Finished(sessionResults.toList())
+        } else {
+            currentAttempt = completedAttempt + 1
+            beginHolding()
+        }
+    }
 
     fun setComfortRating(rating: ComfortRating) {
         val recovery = _state.value as? TrainingState.Recovering ?: return
@@ -297,5 +397,6 @@ class BreathTrainingViewModel @Inject constructor(
         private const val TICK_MILLIS = 100L
         private const val HIDDEN_TIMER_TICK_MILLIS = 50L
         private const val HOLD_GESTURE_GUARD_MILLIS = 1_500L
+        private const val RECOVERY_EXTENSION_MILLIS = 30_000L
     }
 }

@@ -10,6 +10,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import com.zenhold.app.R
+import com.zenhold.app.domain.model.CueStyle
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.BufferedOutputStream
 import java.io.File
@@ -30,6 +31,7 @@ class Media3TrainingAudioController @Inject constructor(
     private var musicVolume = PREPARATION_MUSIC_VOLUME
     private var cueVolume = 0.7f
     private var vibrationEnabled = true
+    private var cueStyle = CueStyle.Bell
     private val musicPlayer = ExoPlayer.Builder(context).build().apply {
         repeatMode = Player.REPEAT_MODE_ONE
         volume = PREPARATION_MUSIC_VOLUME
@@ -46,10 +48,12 @@ class Media3TrainingAudioController @Inject constructor(
         musicVolumePercent: Int,
         cueVolumePercent: Int,
         vibrationEnabled: Boolean,
+        cueStyle: CueStyle,
     ) {
         musicVolume = musicVolumePercent.coerceIn(0, 100) / 100f
         cueVolume = cueVolumePercent.coerceIn(0, 100) / 100f
         this.vibrationEnabled = vibrationEnabled
+        this.cueStyle = cueStyle
         musicPlayer.volume = musicVolume
         cuePlayer.volume = cueVolume
     }
@@ -83,11 +87,17 @@ class Media3TrainingAudioController @Inject constructor(
     }
 
     override suspend fun playTransitionCue() {
-        val file = ensureBellFile()
-        cuePlayer.setMediaItem(MediaItem.fromUri(file.toURI().toString()))
-        cuePlayer.prepare()
-        cuePlayer.play()
-        vibrate()
+        when (cueStyle) {
+            CueStyle.Bell, CueStyle.Soft -> {
+                val file = if (cueStyle == CueStyle.Bell) ensureBellFile() else ensureSoftCueFile()
+                cuePlayer.setMediaItem(MediaItem.fromUri(file.toURI().toString()))
+                cuePlayer.prepare()
+                cuePlayer.play()
+                vibrate()
+            }
+            CueStyle.VibrationOnly -> vibrate()
+            CueStyle.Silent -> Unit
+        }
     }
 
     override fun release() {
@@ -128,6 +138,17 @@ class Media3TrainingAudioController @Inject constructor(
                         0.27 * sin(2 * PI * 1046.5 * t) +
                         0.12 * sin(2 * PI * 1567.98 * t)
                     )
+            }
+        }
+        target
+    }
+
+    private suspend fun ensureSoftCueFile(): File = withContext(Dispatchers.IO) {
+        val target = File(context.cacheDir, "aquaflow_soft_cue.wav")
+        if (!target.exists()) {
+            writeWave(target, durationSeconds = 1.8) { t ->
+                val envelope = exp(-2.2 * t)
+                envelope * (0.32 * sin(2 * PI * 392.0 * t) + 0.12 * sin(2 * PI * 587.33 * t))
             }
         }
         target

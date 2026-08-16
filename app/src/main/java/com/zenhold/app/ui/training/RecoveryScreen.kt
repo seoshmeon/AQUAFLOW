@@ -46,6 +46,8 @@ import com.zenhold.app.ui.util.keepScreenOn
 fun RecoveryScreen(
     state: TrainingState.Recovering,
     onComfortSelected: (ComfortRating) -> Unit,
+    onReady: () -> Unit,
+    onExtend: () -> Unit,
     reduceMotion: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
@@ -102,6 +104,18 @@ fun RecoveryScreen(
         }
 
         ComfortPicker(state.comfortRating, onComfortSelected)
+
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            NeumorphicAction(
+                onClick = onExtend,
+                modifier = Modifier.weight(1f).heightIn(min = 46.dp),
+            ) { Text("+30 секунд", fontSize = 12.sp) }
+            NeumorphicAction(
+                onClick = onReady,
+                modifier = Modifier.weight(1f).heightIn(min = 46.dp),
+                color = MaterialTheme.colorScheme.primary,
+            ) { Text("Я готов", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.SemiBold) }
+        }
 
         Text(
             "Завершён подход ${state.completedAttempt} из ${state.totalAttempts}",

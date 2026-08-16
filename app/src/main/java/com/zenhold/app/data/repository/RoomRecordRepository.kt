@@ -13,6 +13,10 @@ class RoomRecordRepository @Inject constructor(
     private val sessions: TrainingSessionDao,
 ) : RecordRepository {
     override fun observeRecords(): Flow<List<BreathHoldRecord>> = dao.observeAll()
+    override fun observeSessions(): Flow<List<TrainingSessionEntity>> = sessions.observeAll()
+    override suspend fun getActiveSession(): TrainingSessionEntity? = sessions.getActive()
+    override suspend fun getSessionRecords(sessionId: String): List<BreathHoldRecord> =
+        dao.getForSession(sessionId)
     override suspend fun save(record: BreathHoldRecord): Long = dao.insert(record)
     override suspend fun updateComfort(recordId: Long, rating: Int) = dao.updateComfort(recordId, rating)
     override suspend fun updateSessionNote(sessionId: String, note: String) =

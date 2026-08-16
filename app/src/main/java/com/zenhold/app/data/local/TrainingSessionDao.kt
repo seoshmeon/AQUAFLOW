@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface TrainingSessionDao {
@@ -15,6 +16,12 @@ interface TrainingSessionDao {
 
     @Query("SELECT * FROM training_sessions ORDER BY startedAt ASC")
     suspend fun getAll(): List<TrainingSessionEntity>
+
+    @Query("SELECT * FROM training_sessions ORDER BY startedAt ASC")
+    fun observeAll(): Flow<List<TrainingSessionEntity>>
+
+    @Query("SELECT * FROM training_sessions WHERE status = 'ACTIVE' ORDER BY startedAt DESC LIMIT 1")
+    suspend fun getActive(): TrainingSessionEntity?
 
     @Query("UPDATE training_sessions SET completedAttempts = :completedAttempts WHERE sessionId = :sessionId")
     suspend fun updateProgress(sessionId: String, completedAttempts: Int)

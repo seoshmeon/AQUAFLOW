@@ -4,8 +4,11 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.zenhold.app.data.backup.DataBackupManager
+import com.zenhold.app.data.backup.BackupPreview
+import com.zenhold.app.data.backup.ImportMode
 import com.zenhold.app.domain.model.TrainingSettings
 import com.zenhold.app.domain.model.AppThemeMode
+import com.zenhold.app.domain.model.CueStyle
 import com.zenhold.app.domain.repository.SettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -23,6 +26,9 @@ class HomeViewModel @Inject constructor(
 ) : ViewModel() {
     private val _dataMessage = MutableStateFlow<String?>(null)
     val dataMessage = _dataMessage.asStateFlow()
+    private val _importPreview = MutableStateFlow<BackupPreview?>(null)
+    val importPreview = _importPreview.asStateFlow()
+    private var pendingImportUri: Uri? = null
 
     val settings: StateFlow<TrainingSettings> = settingsRepository.settings.stateIn(
         scope = viewModelScope,
@@ -56,6 +62,8 @@ class HomeViewModel @Inject constructor(
     fun setCueVolumePercent(value: Int) =
         update(settings.value.copy(cueVolumePercent = value.coerceIn(0, 100)))
 
+    fun setCueStyle(value: CueStyle) = update(settings.value.copy(cueStyle = value))
+
     fun setVibrationEnabled(value: Boolean) =
         update(settings.value.copy(vibrationEnabled = value))
 
@@ -78,9 +86,30 @@ class HomeViewModel @Inject constructor(
         "CSV сохранён: ${dataBackupManager.exportCsv(uri)} подходов"
     }
 
-    fun importJson(uri: Uri) = runDataAction {
-        val result = dataBackupManager.importJson(uri)
+    fun previewImport(uri: Uri) {
+        viewModelScope.launch {
+            runCatching { dataBackupManager.previewJson(uri) }
+                .onSuccess { preview ->
+                    pendingImportUri = uri
+                    _importPreview.value = preview
+                }
+                .onFailure { error ->
+                    _dataMessage.value = error.message ?: "Не удалось прочитать резервную копию"
+                }
+        }
+    }
+
+    fun confirmImport(mode: ImportMode) = runDataAction {
+        val uri = pendingImportUri ?: error("Файл импорта больше недоступен")
+        val result = dataBackupManager.importJson(uri, mode)
+        pendingImportUri = null
+        _importPreview.value = null
         "Импортировано: ${result.sessions} сессий, ${result.records} подходов"
+    }
+
+    fun cancelImport() {
+        pendingImportUri = null
+        _importPreview.value = null
     }
 
     fun clearAllData() = runDataAction {

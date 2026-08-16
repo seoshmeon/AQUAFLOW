@@ -41,6 +41,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zenhold.app.domain.model.TrainingSettings
+import com.zenhold.app.data.local.TrainingSessionEntity
 import com.zenhold.app.R
 import com.zenhold.app.ui.components.NeumorphicAction
 import com.zenhold.app.ui.components.NeoTactilePrimaryAction
@@ -52,6 +53,9 @@ fun HomeScreen(
     settings: TrainingSettings,
     onStart: () -> Unit,
     onProgress: () -> Unit,
+    resumableSession: TrainingSessionEntity? = null,
+    onResumeSession: () -> Unit = {},
+    onDiscardSession: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val accent = MaterialTheme.colorScheme.primary
@@ -105,6 +109,10 @@ fun HomeScreen(
             }
 
             Spacer(Modifier.height(if (compact) 20.dp else 32.dp))
+            resumableSession?.let { session ->
+                ResumeSessionCard(session, onResumeSession, onDiscardSession)
+                Spacer(Modifier.height(14.dp))
+            }
             Text(
                 "Только сидя или лёжа. Не тренируйтесь в воде, за рулём или после гипервентиляции.",
                 style = MaterialTheme.typography.bodySmall,
@@ -123,6 +131,35 @@ fun HomeScreen(
                 ProgressAction(onProgress, Modifier.fillMaxWidth())
             }
             Spacer(Modifier.height(12.dp))
+        }
+    }
+}
+
+@Composable
+private fun ResumeSessionCard(
+    session: TrainingSessionEntity,
+    onResume: () -> Unit,
+    onDiscard: () -> Unit,
+) {
+    NeumorphicPanel(Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp), elevation = 9.dp) {
+        Column(Modifier.fillMaxWidth().padding(18.dp)) {
+            Text("Незавершённая тренировка", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
+            Text(
+                "Сохранено ${session.completedAttempts} из ${session.plannedAttempts} подходов. Продолжение начнётся с подготовки.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodySmall,
+            )
+            Spacer(Modifier.height(12.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                NeumorphicAction(onClick = onDiscard, modifier = Modifier.weight(1f).heightIn(min = 46.dp)) {
+                    Text("Закрыть", fontSize = 12.sp)
+                }
+                NeumorphicAction(
+                    onClick = onResume,
+                    modifier = Modifier.weight(1f).heightIn(min = 46.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                ) { Text("Продолжить", color = MaterialTheme.colorScheme.onPrimary, fontSize = 12.sp) }
+            }
         }
     }
 }

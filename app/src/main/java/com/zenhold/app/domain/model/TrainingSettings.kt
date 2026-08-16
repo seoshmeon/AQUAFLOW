@@ -8,6 +8,7 @@ data class TrainingSettings(
     val holdingMusicEnabled: Boolean = true,
     val musicVolumePercent: Int = 20,
     val cueVolumePercent: Int = 70,
+    val cueStyle: CueStyle = CueStyle.Bell,
     val vibrationEnabled: Boolean = true,
     val reduceMotion: Boolean = false,
     val fullScreenHoldGesture: Boolean = true,
@@ -49,3 +50,5 @@ enum class AppThemeMode {
     Light,
     Dark,
 }
+
+enum class CueStyle { Bell, Soft, VibrationOnly, Silent }

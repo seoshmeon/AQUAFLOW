@@ -5,6 +5,7 @@ import com.zenhold.app.data.local.BreathHoldRecord
 import com.zenhold.app.data.local.TrainingSessionEntity
 import com.zenhold.app.domain.model.TrainingSettings
 import com.zenhold.app.domain.model.TrainingState
+import com.zenhold.app.domain.model.CueStyle
 import com.zenhold.app.domain.repository.RecordRepository
 import com.zenhold.app.util.ElapsedRealtimeClock
 import kotlinx.coroutines.Dispatchers
@@ -127,14 +128,64 @@ class BreathTrainingViewModelTest {
         assertEquals(1, repository.saved.size)
         assertTrue(viewModel.state.value is TrainingState.Recovering)
     }
+
+    @Test
+    fun recovery_canBeExtended_andCompletedEarly() = runTest(dispatcher) {
+        val repository = FakeRecordRepository()
+        val viewModel = BreathTrainingViewModel(repository, FakeAudioController(), ElapsedRealtimeClock { testScheduler.currentTime })
+        viewModel.startTraining(TrainingSettings(attemptCount = 1, recoveryDurationMillis = 30_000L))
+        advanceTimeBy(BreathTrainingViewModel.PREPARATION_MILLIS + 1_600L)
+        runCurrent()
+        viewModel.stopHolding()
+        runCurrent()
+
+        viewModel.extendRecovery()
+        assertEquals(60_000L, (viewModel.state.value as TrainingState.Recovering).totalRecoveryMillis)
+        viewModel.completeRecoveryEarly()
+        runCurrent()
+
+        assertTrue(viewModel.state.value is TrainingState.Finished)
+    }
+
+    @Test
+    fun activeSession_resumesFromNextAttemptWithFreshPreparation() = runTest(dispatcher) {
+        val active = TrainingSessionEntity(
+            sessionId = "active",
+            startedAt = 1L,
+            plannedAttempts = 3,
+            completedAttempts = 1,
+            preparationDurationMillis = 30_000L,
+            recoveryDurationMillis = 60_000L,
+            energyLevel = 4,
+            stressLevel = 2,
+        )
+        val repository = FakeRecordRepository(listOf(active))
+        val viewModel = BreathTrainingViewModel(repository, FakeAudioController(), ElapsedRealtimeClock { testScheduler.currentTime })
+        runCurrent()
+
+        viewModel.resumeTraining(TrainingSettings())
+        runCurrent()
+
+        val preparation = viewModel.state.value as TrainingState.Preparation
+        assertEquals(2, preparation.attempt)
+        assertEquals(3, preparation.totalAttempts)
+        viewModel.finishNow()
+        runCurrent()
+    }
 }
 
-private class FakeRecordRepository : RecordRepository {
+private class FakeRecordRepository(initialSessions: List<TrainingSessionEntity> = emptyList()) : RecordRepository {
     val saved = mutableListOf<BreathHoldRecord>()
     var startedSession: TrainingSessionEntity? = null
     var finishedStatus: String? = null
     private val records = MutableStateFlow<List<BreathHoldRecord>>(emptyList())
+    private val sessions = MutableStateFlow(initialSessions)
     override fun observeRecords(): Flow<List<BreathHoldRecord>> = records
+    override fun observeSessions(): Flow<List<TrainingSessionEntity>> = sessions
+    override suspend fun getActiveSession(): TrainingSessionEntity? =
+        sessions.value.lastOrNull { it.status == TrainingSessionEntity.STATUS_ACTIVE }
+    override suspend fun getSessionRecords(sessionId: String): List<BreathHoldRecord> =
+        saved.filter { it.sessionId == sessionId }
     override suspend fun save(record: BreathHoldRecord): Long {
         saved += record
         records.value = saved.toList()
@@ -151,6 +202,7 @@ private class FakeRecordRepository : RecordRepository {
     }
     override suspend fun startSession(session: TrainingSessionEntity) {
         startedSession = session
+        sessions.value = sessions.value + session
     }
     override suspend fun updateSessionProgress(sessionId: String, completedAttempts: Int) = Unit
     override suspend fun finishSession(sessionId: String, status: String, reason: String) {
@@ -159,7 +211,12 @@ private class FakeRecordRepository : RecordRepository {
 }
 
 private class FakeAudioController : TrainingAudioController {
-    override fun configure(musicVolumePercent: Int, cueVolumePercent: Int, vibrationEnabled: Boolean) = Unit
+    override fun configure(
+        musicVolumePercent: Int,
+        cueVolumePercent: Int,
+        vibrationEnabled: Boolean,
+        cueStyle: CueStyle,
+    ) = Unit
     override suspend fun startPreparationMusic() = Unit
     override fun stopPreparationMusic() = Unit
     override fun startHoldingMusic() = Unit

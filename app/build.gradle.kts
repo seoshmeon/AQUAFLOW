@@ -8,7 +8,7 @@ plugins {
     id("com.google.dagger.hilt.android")
 }
 
-val appVersionName = "1.6.0"
+val appVersionName = "1.7.0"
 val releasePropertiesFile = rootProject.file("keystore.properties")
 val releaseProperties = Properties().apply {
     if (releasePropertiesFile.exists()) releasePropertiesFile.inputStream().use(::load)
@@ -22,7 +22,7 @@ android {
         applicationId = "com.zenhold.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 9
+        versionCode = 10
         versionName = appVersionName
 
         testInstrumentationRunner = "com.zenhold.app.HiltTestRunner"

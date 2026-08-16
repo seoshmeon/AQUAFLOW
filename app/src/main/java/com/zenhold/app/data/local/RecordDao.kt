@@ -23,6 +23,9 @@ interface RecordDao {
     @Query("SELECT * FROM breath_hold_records ORDER BY timestamp ASC, id ASC")
     suspend fun getAll(): List<BreathHoldRecord>
 
+    @Query("SELECT * FROM breath_hold_records WHERE sessionId = :sessionId ORDER BY attemptNumber ASC")
+    suspend fun getForSession(sessionId: String): List<BreathHoldRecord>
+
     @Query("UPDATE breath_hold_records SET comfortRating = :rating WHERE id = :recordId")
     suspend fun updateComfort(recordId: Long, rating: Int)
 

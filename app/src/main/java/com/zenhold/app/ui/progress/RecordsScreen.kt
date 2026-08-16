@@ -36,6 +36,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zenhold.app.data.local.BreathHoldRecord
+import com.zenhold.app.data.local.TrainingSessionEntity
 import com.zenhold.app.ui.components.NeumorphicPanel
 import com.zenhold.app.ui.util.formatDuration
 import java.text.SimpleDateFormat
@@ -59,7 +60,7 @@ fun RecordsScreen(
             .padding(top = 72.dp),
       ) {
         Column(Modifier.padding(horizontal = pagePadding)) {
-            Text("Рекорды", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.SemiBold)
+            Text("История", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.SemiBold)
             Text(
                 "Тренировки, подходы, ощущения и заметки",
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -115,20 +116,40 @@ private fun SessionHistoryCard(session: SessionSummary, onSaveNote: (String, Str
             ) {
                 Column(Modifier.weight(1f)) {
                     Text(formattedDate, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("${session.attempts.size} подх. · среднее ${formatDuration(session.averageMillis)}", fontWeight = FontWeight.Medium)
+                    Text(
+                        "${session.attempts.size} из ${session.plannedAttempts} · ${statusLabel(session.status)}",
+                        fontWeight = FontWeight.Medium,
+                        color = if (session.status == TrainingSessionEntity.STATUS_COMPLETED) {
+                            MaterialTheme.colorScheme.onSurface
+                        } else MaterialTheme.colorScheme.primary,
+                    )
+                    if (session.attempts.isNotEmpty()) {
+                        Text("Среднее ${formatDuration(session.averageMillis)}", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                     if (session.note.isNotBlank() && !expanded) {
                         Text(session.note, maxLines = 1, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                     }
                 }
-                Text(
-                    formatDuration(session.maximumMillis),
-                    color = MaterialTheme.colorScheme.primary,
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Light,
-                )
+                if (session.maximumMillis > 0L) {
+                    Text(
+                        formatDuration(session.maximumMillis),
+                        color = MaterialTheme.colorScheme.primary,
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Light,
+                    )
+                }
             }
             if (expanded) {
                 Spacer(Modifier.height(14.dp))
+                Text(
+                    "Энергия ${session.energyLevel}/5 · напряжение ${session.stressLevel}/5",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 12.sp,
+                )
+                if (session.interruptionReason.isNotBlank()) {
+                    Text(session.interruptionReason, color = MaterialTheme.colorScheme.primary, fontSize = 12.sp)
+                    Spacer(Modifier.height(6.dp))
+                }
                 session.attempts.forEach { RecordRow(it) }
                 Spacer(Modifier.height(10.dp))
                 OutlinedTextField(
@@ -149,6 +170,14 @@ private fun SessionHistoryCard(session: SessionSummary, onSaveNote: (String, Str
             }
         }
     }
+}
+
+private fun statusLabel(status: String): String = when (status) {
+    TrainingSessionEntity.STATUS_ACTIVE -> "можно продолжить"
+    TrainingSessionEntity.STATUS_COMPLETED -> "завершена"
+    TrainingSessionEntity.STATUS_STOPPED -> "остановлена"
+    TrainingSessionEntity.STATUS_INTERRUPTED -> "прервана"
+    else -> "сессия"
 }
 
 @Composable

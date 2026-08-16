@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.zenhold.app.domain.model.TrainingSettings
 import com.zenhold.app.domain.model.AppThemeMode
+import com.zenhold.app.domain.model.CueStyle
 import com.zenhold.app.domain.repository.SettingsRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
@@ -30,6 +31,7 @@ class DataStoreSettingsRepository @Inject constructor(
         val holdingMusic = booleanPreferencesKey("holding_music_enabled")
         val musicVolume = intPreferencesKey("music_volume_percent")
         val cueVolume = intPreferencesKey("cue_volume_percent")
+        val cueStyle = stringPreferencesKey("cue_style")
         val vibration = booleanPreferencesKey("vibration_enabled")
         val reduceMotion = booleanPreferencesKey("reduce_motion")
         val fullScreenHoldGesture = booleanPreferencesKey("full_screen_hold_gesture")
@@ -49,6 +51,9 @@ class DataStoreSettingsRepository @Inject constructor(
             holdingMusicEnabled = values[Keys.holdingMusic] ?: true,
             musicVolumePercent = (values[Keys.musicVolume] ?: 20).coerceIn(0, 100),
             cueVolumePercent = (values[Keys.cueVolume] ?: 70).coerceIn(0, 100),
+            cueStyle = values[Keys.cueStyle]
+                ?.let { stored -> CueStyle.entries.firstOrNull { it.name == stored } }
+                ?: CueStyle.Bell,
             vibrationEnabled = values[Keys.vibration] ?: true,
             reduceMotion = values[Keys.reduceMotion] ?: false,
             fullScreenHoldGesture = values[Keys.fullScreenHoldGesture] ?: true,
@@ -68,6 +73,7 @@ class DataStoreSettingsRepository @Inject constructor(
             values[Keys.holdingMusic] = settings.holdingMusicEnabled
             values[Keys.musicVolume] = settings.musicVolumePercent
             values[Keys.cueVolume] = settings.cueVolumePercent
+            values[Keys.cueStyle] = settings.cueStyle.name
             values[Keys.vibration] = settings.vibrationEnabled
             values[Keys.reduceMotion] = settings.reduceMotion
             values[Keys.fullScreenHoldGesture] = settings.fullScreenHoldGesture

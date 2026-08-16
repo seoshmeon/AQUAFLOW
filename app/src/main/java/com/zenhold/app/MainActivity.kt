@@ -77,7 +77,9 @@ private fun ZenHoldApp(
 ) {
     val settings by homeViewModel.settings.collectAsStateWithLifecycle()
     val dataMessage by homeViewModel.dataMessage.collectAsStateWithLifecycle()
+    val importPreview by homeViewModel.importPreview.collectAsStateWithLifecycle()
     val trainingState by trainingViewModel.state.collectAsStateWithLifecycle()
+    val resumableSession by trainingViewModel.resumableSession.collectAsStateWithLifecycle()
     val progressState by progressViewModel.state.collectAsStateWithLifecycle()
     val followsSystemDark = isSystemInDarkTheme()
     val darkTheme = when (settings.themeMode) {
@@ -148,6 +150,12 @@ private fun ZenHoldApp(
                         settings = settings,
                         onStart = { destination = Destination.SessionPlan },
                         onProgress = { destination = Destination.Progress },
+                        resumableSession = resumableSession,
+                        onResumeSession = {
+                            trainingViewModel.resumeTraining(settings)
+                            destination = Destination.Training
+                        },
+                        onDiscardSession = trainingViewModel::discardResumableSession,
                     )
                     Destination.Settings -> SettingsScreen(
                         settings = settings,
@@ -158,14 +166,18 @@ private fun ZenHoldApp(
                         onHoldingMusicChanged = homeViewModel::setHoldingMusicEnabled,
                         onMusicVolumeChanged = homeViewModel::setMusicVolumePercent,
                         onCueVolumeChanged = homeViewModel::setCueVolumePercent,
+                        onCueStyleChanged = homeViewModel::setCueStyle,
                         onVibrationChanged = homeViewModel::setVibrationEnabled,
                         onReduceMotionChanged = homeViewModel::setReduceMotion,
                         onFullScreenHoldGestureChanged = homeViewModel::setFullScreenHoldGesture,
                         onThemeModeChanged = homeViewModel::setThemeMode,
                         dataMessage = dataMessage,
+                        importPreview = importPreview,
                         onExportJson = homeViewModel::exportJson,
                         onExportCsv = homeViewModel::exportCsv,
-                        onImportJson = homeViewModel::importJson,
+                        onImportJson = homeViewModel::previewImport,
+                        onConfirmImport = homeViewModel::confirmImport,
+                        onCancelImport = homeViewModel::cancelImport,
                         onClearData = homeViewModel::clearAllData,
                         onDismissDataMessage = homeViewModel::dismissDataMessage,
                     )
@@ -203,6 +215,8 @@ private fun ZenHoldApp(
                         is TrainingState.Recovering -> RecoveryScreen(
                             state,
                             trainingViewModel::setComfortRating,
+                            trainingViewModel::completeRecoveryEarly,
+                            trainingViewModel::extendRecovery,
                             reduceMotion = settings.reduceMotion,
                         )
                         is TrainingState.Finished -> FinishedScreen(

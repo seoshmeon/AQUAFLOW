@@ -3,6 +3,7 @@ package com.zenhold.app.ui.progress
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.zenhold.app.data.local.BreathHoldRecord
+import com.zenhold.app.data.local.TrainingSessionEntity
 import com.zenhold.app.domain.repository.RecordRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -40,6 +41,11 @@ data class SessionSummary(
     val averageMillis: Long,
     val maximumMillis: Long,
     val note: String,
+    val plannedAttempts: Int = attempts.size,
+    val status: String = TrainingSessionEntity.STATUS_COMPLETED,
+    val energyLevel: Int = attempts.firstOrNull()?.energyLevel ?: 3,
+    val stressLevel: Int = attempts.firstOrNull()?.stressLevel ?: 2,
+    val interruptionReason: String = "",
 )
 
 data class SessionPoint(
@@ -81,8 +87,9 @@ class ProgressViewModel @Inject constructor(
 
     val state: StateFlow<ProgressUiState> = combine(
         repository.observeRecords(),
+        repository.observeSessions(),
         selectedPeriod,
-    ) { records, period -> buildProgressState(records, period) }
+    ) { records, sessions, period -> buildProgressState(records, period, sessionEntities = sessions) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ProgressUiState())
 
     fun selectPeriod(period: ProgressPeriod) {
@@ -100,6 +107,7 @@ internal fun buildProgressState(
     records: List<BreathHoldRecord>,
     selectedPeriod: ProgressPeriod = ProgressPeriod.All,
     nowMillis: Long = System.currentTimeMillis(),
+    sessionEntities: List<TrainingSessionEntity> = emptyList(),
 ): ProgressUiState {
         val zone = ZoneId.systemDefault()
         val now = Instant.ofEpochMilli(nowMillis).atZone(zone)
@@ -109,6 +117,21 @@ internal fun buildProgressState(
             calendarMonthLabel = YearMonth.from(now).format(monthFormatter)
                 .replaceFirstChar { it.titlecase() },
             achievements = defaultAchievements(),
+            sessionSummaries = sessionEntities.map { session ->
+                SessionSummary(
+                    sessionId = session.sessionId,
+                    timestamp = session.startedAt,
+                    attempts = emptyList(),
+                    averageMillis = 0L,
+                    maximumMillis = 0L,
+                    note = session.note,
+                    plannedAttempts = session.plannedAttempts,
+                    status = session.status,
+                    energyLevel = session.energyLevel,
+                    stressLevel = session.stressLevel,
+                    interruptionReason = session.interruptionReason,
+                )
+            }.sortedByDescending { it.timestamp },
         )
         val (periodStart, previousStart) = periodBoundaries(selectedPeriod, now)
         val periodRecords = periodStart?.let { start ->
@@ -161,16 +184,27 @@ internal fun buildProgressState(
         val comparison = if (currentAverage != null && previousAverage != null && previousAverage > 0.0) {
             ((currentAverage - previousAverage) / previousAverage * 100.0).toFloat()
         } else null
-        val allSessions = records.groupBy { it.sessionId }.map { (id, attempts) ->
+        val attemptsBySession = records.groupBy { it.sessionId }
+        val metadataBySession = sessionEntities.associateBy { it.sessionId }
+        val allSessionIds = (attemptsBySession.keys + metadataBySession.keys)
+        val allSessions = allSessionIds.map { id ->
+            val attempts = attemptsBySession[id].orEmpty()
+            val metadata = metadataBySession[id]
             SessionSummary(
                 sessionId = id,
-                timestamp = attempts.minOf { it.timestamp },
+                timestamp = metadata?.startedAt ?: attempts.minOf { it.timestamp },
                 attempts = attempts.sortedBy { it.attemptNumber },
-                averageMillis = attempts.map { it.holdDurationMillis }.average().toLong(),
-                maximumMillis = attempts.maxOf { it.holdDurationMillis },
-                note = attempts.firstNotNullOfOrNull { attempt ->
+                averageMillis = attempts.takeIf { it.isNotEmpty() }
+                    ?.map { it.holdDurationMillis }?.average()?.toLong() ?: 0L,
+                maximumMillis = attempts.maxOfOrNull { it.holdDurationMillis } ?: 0L,
+                note = metadata?.note?.takeIf { it.isNotBlank() } ?: attempts.firstNotNullOfOrNull { attempt ->
                     attempt.sessionNote.takeIf { it.isNotBlank() }
                 }.orEmpty(),
+                plannedAttempts = metadata?.plannedAttempts ?: attempts.size,
+                status = metadata?.status ?: TrainingSessionEntity.STATUS_COMPLETED,
+                energyLevel = metadata?.energyLevel ?: attempts.firstOrNull()?.energyLevel ?: 3,
+                stressLevel = metadata?.stressLevel ?: attempts.firstOrNull()?.stressLevel ?: 2,
+                interruptionReason = metadata?.interruptionReason.orEmpty(),
             )
         }.sortedByDescending { it.timestamp }
         val comfortableCount = records.count { it.comfortRating == 1 || it.comfortRating == 2 }

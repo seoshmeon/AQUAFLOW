@@ -6,6 +6,9 @@ import kotlinx.coroutines.flow.Flow
 
 interface RecordRepository {
     fun observeRecords(): Flow<List<BreathHoldRecord>>
+    fun observeSessions(): Flow<List<TrainingSessionEntity>>
+    suspend fun getActiveSession(): TrainingSessionEntity?
+    suspend fun getSessionRecords(sessionId: String): List<BreathHoldRecord>
     suspend fun save(record: BreathHoldRecord): Long
     suspend fun updateComfort(recordId: Long, rating: Int)
     suspend fun updateSessionNote(sessionId: String, note: String)

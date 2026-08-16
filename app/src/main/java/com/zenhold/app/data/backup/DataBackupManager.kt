@@ -18,6 +18,14 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 data class ImportSummary(val sessions: Int, val records: Int)
+data class BackupPreview(val exportedAt: Long, val sessions: Int, val records: Int)
+enum class ImportMode { Merge, Replace }
+
+private data class ParsedBackup(
+    val exportedAt: Long,
+    val sessions: List<TrainingSessionEntity>,
+    val records: List<BreathHoldRecord>,
+)
 
 /** User-owned, offline backup. No training data is sent over the network. */
 @Singleton
@@ -68,7 +76,25 @@ class DataBackupManager @Inject constructor(
         allRecords.size
     }
 
-    suspend fun importJson(uri: Uri): ImportSummary = withContext(Dispatchers.IO) {
+    suspend fun previewJson(uri: Uri): BackupPreview = withContext(Dispatchers.IO) {
+        val backup = readBackup(uri)
+        BackupPreview(backup.exportedAt, backup.sessions.size, backup.records.size)
+    }
+
+    suspend fun importJson(uri: Uri, mode: ImportMode): ImportSummary = withContext(Dispatchers.IO) {
+        val backup = readBackup(uri)
+        database.withTransaction {
+            if (mode == ImportMode.Replace) {
+                records.deleteAll()
+                sessions.deleteAll()
+            }
+            sessions.upsertAll(backup.sessions)
+            records.insertAll(backup.records)
+        }
+        ImportSummary(backup.sessions.size, backup.records.size)
+    }
+
+    private fun readBackup(uri: Uri): ParsedBackup {
         val text = context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { reader ->
             val result = StringBuilder()
             val buffer = CharArray(8_192)
@@ -90,11 +116,11 @@ class DataBackupManager @Inject constructor(
         require(importedSessions.size <= MAX_ITEMS && importedRecords.size <= MAX_ITEMS) {
             "В резервной копии слишком много записей"
         }
-        database.withTransaction {
-            sessions.upsertAll(importedSessions)
-            records.insertAll(importedRecords)
-        }
-        ImportSummary(importedSessions.size, importedRecords.size)
+        return ParsedBackup(
+            exportedAt = root.optLong("exportedAt", 0L),
+            sessions = importedSessions,
+            records = importedRecords,
+        )
     }
 
     suspend fun clearAll() = withContext(Dispatchers.IO) {

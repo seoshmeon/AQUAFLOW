@@ -40,10 +40,16 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.zenhold.app.domain.model.TrainingSettings
 import com.zenhold.app.domain.model.AppThemeMode
+import com.zenhold.app.domain.model.CueStyle
 import com.zenhold.app.ui.components.NeumorphicPanel
 import com.zenhold.app.ui.components.NeumorphicAction
 import com.zenhold.app.ui.util.formatDuration
+import com.zenhold.app.data.backup.BackupPreview
+import com.zenhold.app.data.backup.ImportMode
 import java.time.LocalDate
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @Composable
 fun SettingsScreen(
@@ -55,14 +61,18 @@ fun SettingsScreen(
     onHoldingMusicChanged: (Boolean) -> Unit,
     onMusicVolumeChanged: (Int) -> Unit,
     onCueVolumeChanged: (Int) -> Unit,
+    onCueStyleChanged: (CueStyle) -> Unit,
     onVibrationChanged: (Boolean) -> Unit,
     onReduceMotionChanged: (Boolean) -> Unit,
     onFullScreenHoldGestureChanged: (Boolean) -> Unit,
     onThemeModeChanged: (AppThemeMode) -> Unit,
     dataMessage: String?,
+    importPreview: BackupPreview?,
     onExportJson: (Uri) -> Unit,
     onExportCsv: (Uri) -> Unit,
     onImportJson: (Uri) -> Unit,
+    onConfirmImport: (ImportMode) -> Unit,
+    onCancelImport: () -> Unit,
     onClearData: () -> Unit,
     onDismissDataMessage: () -> Unit,
     modifier: Modifier = Modifier,
@@ -145,6 +155,8 @@ fun SettingsScreen(
                 onValue = { onMusicVolumeChanged((it / 10).toInt() * 10) },
             )
             Spacer(Modifier.height(20.dp))
+            CueStyleSelector(settings.cueStyle, compact, onCueStyleChanged)
+            Spacer(Modifier.height(20.dp))
             TrainingSettingSlider(
                 label = "Громкость сигнала",
                 valueLabel = "${settings.cueVolumePercent}%",
@@ -212,6 +224,64 @@ fun SettingsScreen(
             text = { Text(message) },
             confirmButton = { TextButton(onClick = onDismissDataMessage) { Text("Готово") } },
         )
+    }
+    importPreview?.let { preview ->
+        val date = remember(preview.exportedAt) {
+            if (preview.exportedAt > 0L) {
+                SimpleDateFormat("d MMMM yyyy, HH:mm", Locale.forLanguageTag("ru-RU"))
+                    .format(Date(preview.exportedAt))
+            } else "дата не указана"
+        }
+        AlertDialog(
+            onDismissRequest = onCancelImport,
+            title = { Text("Проверка резервной копии") },
+            text = {
+                Text("Создана: $date\nСессий: ${preview.sessions}\nПодходов: ${preview.records}\n\nОбъединение сохранит текущую историю. Замена сначала удалит её полностью.")
+            },
+            confirmButton = {
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    TextButton(onClick = { onConfirmImport(ImportMode.Merge) }) { Text("Объединить") }
+                    TextButton(onClick = { onConfirmImport(ImportMode.Replace) }) {
+                        Text("Заменить", color = MaterialTheme.colorScheme.error)
+                    }
+                }
+            },
+            dismissButton = { TextButton(onClick = onCancelImport) { Text("Отмена") } },
+        )
+    }
+}
+
+@Composable
+private fun CueStyleSelector(selected: CueStyle, compact: Boolean, onSelected: (CueStyle) -> Unit) {
+    NeumorphicPanel(Modifier.fillMaxWidth(), shape = RoundedCornerShape(26.dp)) {
+        Column(Modifier.padding(horizontal = 22.dp, vertical = 18.dp)) {
+            Text("Сигнал перехода", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(12.dp))
+            SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+                CueStyle.entries.forEach { style ->
+                    SegmentedButton(
+                        selected = selected == style,
+                        onClick = { onSelected(style) },
+                        shape = RoundedCornerShape(7.dp),
+                        colors = SegmentedButtonDefaults.colors(
+                            activeContainerColor = MaterialTheme.colorScheme.primary,
+                            activeContentColor = MaterialTheme.colorScheme.onPrimary,
+                        ),
+                    ) {
+                        Text(
+                            when (style) {
+                                CueStyle.Bell -> "Колокол"
+                                CueStyle.Soft -> "Мягкий"
+                                CueStyle.VibrationOnly -> "Вибро"
+                                CueStyle.Silent -> "Тишина"
+                            },
+                            fontSize = if (compact) 9.sp else 11.sp,
+                            maxLines = 1,
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
