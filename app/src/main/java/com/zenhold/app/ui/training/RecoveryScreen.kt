@@ -46,16 +46,20 @@ import com.zenhold.app.ui.util.keepScreenOn
 fun RecoveryScreen(
     state: TrainingState.Recovering,
     onComfortSelected: (ComfortRating) -> Unit,
+    reduceMotion: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val accent = MaterialTheme.colorScheme.primary
-    val transition = rememberInfiniteTransition(label = "recovery breath")
-    val breathScale by transition.animateFloat(
-        initialValue = .72f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(4_500), RepeatMode.Reverse),
-        label = "breathing circle",
-    )
+    val breathScale = if (reduceMotion) .86f else {
+        val transition = rememberInfiniteTransition(label = "recovery breath")
+        val animatedScale by transition.animateFloat(
+            initialValue = .72f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(tween(4_500), RepeatMode.Reverse),
+            label = "breathing circle",
+        )
+        animatedScale
+    }
     val showResult = remember(state.completedAttempt) { true }
     val progress = if (state.totalRecoveryMillis == 0L) 1f
     else 1f - state.remainingMillis.toFloat() / state.totalRecoveryMillis

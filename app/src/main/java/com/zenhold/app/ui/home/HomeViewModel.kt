@@ -42,6 +42,18 @@ class HomeViewModel @Inject constructor(
     fun setHoldingMusicEnabled(value: Boolean) =
         update(settings.value.copy(holdingMusicEnabled = value))
 
+    fun setMusicVolumePercent(value: Int) =
+        update(settings.value.copy(musicVolumePercent = value.coerceIn(0, 100)))
+
+    fun setCueVolumePercent(value: Int) =
+        update(settings.value.copy(cueVolumePercent = value.coerceIn(0, 100)))
+
+    fun setVibrationEnabled(value: Boolean) =
+        update(settings.value.copy(vibrationEnabled = value))
+
+    fun setReduceMotion(value: Boolean) =
+        update(settings.value.copy(reduceMotion = value))
+
     fun setFullScreenHoldGesture(value: Boolean) =
         update(settings.value.copy(fullScreenHoldGesture = value))
 

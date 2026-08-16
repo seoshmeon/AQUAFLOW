@@ -6,7 +6,7 @@ plugins {
     id("com.google.dagger.hilt.android")
 }
 
-val appVersionName = "1.4.0"
+val appVersionName = "1.5.0"
 
 android {
     namespace = "com.zenhold.app"
@@ -16,7 +16,7 @@ android {
         applicationId = "com.zenhold.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 7
+        versionCode = 8
         versionName = appVersionName
 
         testInstrumentationRunner = "com.zenhold.app.HiltTestRunner"
@@ -35,7 +35,7 @@ android {
 }
 
 base {
-    archivesName.set("APIRA-$appVersionName")
+    archivesName.set("AQUAFLOW-$appVersionName")
 }
 
 dependencies {

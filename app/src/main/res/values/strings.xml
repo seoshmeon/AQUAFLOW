@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">APIRA</string>
+    <string name="app_name">AQUAFLOW</string>
+    <string name="app_tagline">Свобода начинается с дыхания</string>
 </resources>

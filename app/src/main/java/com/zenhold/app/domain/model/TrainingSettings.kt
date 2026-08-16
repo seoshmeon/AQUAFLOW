@@ -6,6 +6,10 @@ data class TrainingSettings(
     val preparationDurationMillis: Long = 30_000L,
     val preparationMusicEnabled: Boolean = true,
     val holdingMusicEnabled: Boolean = true,
+    val musicVolumePercent: Int = 20,
+    val cueVolumePercent: Int = 70,
+    val vibrationEnabled: Boolean = true,
+    val reduceMotion: Boolean = false,
     val fullScreenHoldGesture: Boolean = true,
     val themeMode: AppThemeMode = AppThemeMode.System,
 ) {
@@ -13,6 +17,8 @@ data class TrainingSettings(
         require(attemptCount in 1..10)
         require(recoveryDurationMillis in 30_000L..600_000L)
         require(preparationDurationMillis in PREPARATION_OPTIONS_MILLIS)
+        require(musicVolumePercent in 0..100)
+        require(cueVolumePercent in 0..100)
     }
 
     companion object {

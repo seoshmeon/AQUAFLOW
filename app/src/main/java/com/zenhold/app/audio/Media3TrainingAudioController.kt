@@ -27,19 +27,36 @@ import kotlinx.coroutines.withContext
 class Media3TrainingAudioController @Inject constructor(
     @ApplicationContext private val context: Context,
 ) : TrainingAudioController {
+    private var musicVolume = PREPARATION_MUSIC_VOLUME
+    private var cueVolume = 0.7f
+    private var vibrationEnabled = true
     private val musicPlayer = ExoPlayer.Builder(context).build().apply {
         repeatMode = Player.REPEAT_MODE_ONE
         volume = PREPARATION_MUSIC_VOLUME
+        setHandleAudioBecomingNoisy(true)
         setAudioAttributes(mediaAttributes(), true)
     }
     private val cuePlayer = ExoPlayer.Builder(context).build().apply {
-        volume = 0.7f
+        volume = cueVolume
         // The cue should mix with (not steal focus from) the preparation player.
         setAudioAttributes(mediaAttributes(), false)
     }
 
+    override fun configure(
+        musicVolumePercent: Int,
+        cueVolumePercent: Int,
+        vibrationEnabled: Boolean,
+    ) {
+        musicVolume = musicVolumePercent.coerceIn(0, 100) / 100f
+        cueVolume = cueVolumePercent.coerceIn(0, 100) / 100f
+        this.vibrationEnabled = vibrationEnabled
+        musicPlayer.volume = musicVolume
+        cuePlayer.volume = cueVolume
+    }
+
     override suspend fun startPreparationMusic() {
         val file = ensureAmbientFile()
+        musicPlayer.volume = musicVolume
         musicPlayer.setMediaItem(MediaItem.fromUri(file.toURI().toString()))
         musicPlayer.prepare()
         musicPlayer.play()
@@ -53,7 +70,7 @@ class Media3TrainingAudioController @Inject constructor(
     /** Plays the bundled handpan track locally, without requiring a network connection. */
     override fun startHoldingMusic() {
         val uri = "android.resource://${context.packageName}/${R.raw.handpan_vdoh}"
-        musicPlayer.volume = HOLD_MUSIC_VOLUME
+        musicPlayer.volume = musicVolume
         musicPlayer.setMediaItem(MediaItem.fromUri(uri))
         musicPlayer.prepare()
         musicPlayer.play()
@@ -62,7 +79,7 @@ class Media3TrainingAudioController @Inject constructor(
     override fun stopHoldingMusic() {
         musicPlayer.pause()
         musicPlayer.clearMediaItems()
-        musicPlayer.volume = PREPARATION_MUSIC_VOLUME
+        musicPlayer.volume = musicVolume
     }
 
     override suspend fun playTransitionCue() {
@@ -84,6 +101,7 @@ class Media3TrainingAudioController @Inject constructor(
         .build()
 
     private fun vibrate() {
+        if (!vibrationEnabled) return
         val vibrator = context.getSystemService<Vibrator>() ?: return
         val pattern = longArrayOf(0, 80, 60, 140)
         vibrator.vibrate(VibrationEffect.createWaveform(pattern, -1))
@@ -143,6 +161,5 @@ class Media3TrainingAudioController @Inject constructor(
 
     private companion object {
         const val PREPARATION_MUSIC_VOLUME = 0.22f
-        const val HOLD_MUSIC_VOLUME = 0.16f
     }
 }

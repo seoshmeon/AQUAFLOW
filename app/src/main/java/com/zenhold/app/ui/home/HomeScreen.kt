@@ -1,6 +1,7 @@
 package com.zenhold.app.ui.home
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -34,11 +35,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zenhold.app.domain.model.TrainingSettings
+import com.zenhold.app.R
 import com.zenhold.app.ui.components.NeumorphicAction
 import com.zenhold.app.ui.components.NeoTactilePrimaryAction
 import com.zenhold.app.ui.components.NeumorphicPanel
@@ -66,8 +69,19 @@ fun HomeScreen(
                 .padding(horizontal = pagePadding, vertical = if (compact) 18.dp else 28.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(9.dp).background(accent, CircleShape))
-                Text("  APIRA", fontSize = 13.sp, letterSpacing = 3.4.sp, color = accent, fontWeight = FontWeight.SemiBold)
+                Image(
+                    painter = painterResource(R.drawable.aquaflow_mark),
+                    contentDescription = null,
+                    modifier = Modifier.size(30.dp),
+                )
+                Text(
+                    "AQUAFLOW",
+                    modifier = Modifier.padding(start = 8.dp),
+                    fontSize = 13.sp,
+                    letterSpacing = 3.1.sp,
+                    color = accent,
+                    fontWeight = FontWeight.SemiBold,
+                )
             }
             Spacer(Modifier.height(if (compact) 20.dp else 34.dp))
 
@@ -119,7 +133,7 @@ private fun HeroCopy(compact: Boolean, modifier: Modifier = Modifier) {
         MaterialTheme.typography.headlineLarge.copy(fontSize = 30.sp, lineHeight = 34.sp, letterSpacing = (-.7).sp)
     } else MaterialTheme.typography.headlineLarge
     Column(modifier) {
-        Text("Спокойная сила", style = headline, fontWeight = FontWeight.Light, maxLines = 1)
+        Text("Свобода", style = headline, fontWeight = FontWeight.Light, maxLines = 1)
         Text("начинается с дыхания", style = headline, fontWeight = FontWeight.SemiBold, maxLines = 2)
         Spacer(Modifier.height(12.dp))
         Text(

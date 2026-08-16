@@ -46,6 +46,11 @@ class BreathTrainingViewModel @Inject constructor(
         if (_state.value !is TrainingState.Idle && _state.value !is TrainingState.Finished) return
 
         settings = selectedSettings
+        audio.configure(
+            musicVolumePercent = settings.musicVolumePercent,
+            cueVolumePercent = settings.cueVolumePercent,
+            vibrationEnabled = settings.vibrationEnabled,
+        )
         checkIn = sessionCheckIn
         currentAttempt = 1
         sessionId = UUID.randomUUID().toString()
@@ -211,7 +216,11 @@ class BreathTrainingViewModel @Inject constructor(
     }
 
     fun interruptForSafety() {
-        if (_state.value !is TrainingState.Holding) return
+        val activeState = _state.value
+        if (activeState is TrainingState.Idle ||
+            activeState is TrainingState.Finished ||
+            activeState is TrainingState.Interrupted
+        ) return
         timerJob?.cancel()
         hiddenHoldTickerJob?.cancel()
         holdGuardJob?.cancel()
@@ -220,7 +229,11 @@ class BreathTrainingViewModel @Inject constructor(
         audio.stopHoldingMusic()
         _state.value = TrainingState.Interrupted(
             resultsMillis = sessionResults.toList(),
-            message = "Задержка остановлена, потому что приложение было свёрнуто или прервано.",
+            message = if (activeState is TrainingState.Holding) {
+                "Задержка остановлена, потому что приложение было свёрнуто или прервано. Текущий подход не сохранён."
+            } else {
+                "Тренировка безопасно остановлена после сворачивания или внешнего прерывания. Уже завершённые подходы сохранены."
+            },
         )
     }
 

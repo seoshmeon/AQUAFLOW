@@ -41,6 +41,10 @@ fun SettingsScreen(
     onPreparationSecondsChanged: (Int) -> Unit,
     onPreparationMusicChanged: (Boolean) -> Unit,
     onHoldingMusicChanged: (Boolean) -> Unit,
+    onMusicVolumeChanged: (Int) -> Unit,
+    onCueVolumeChanged: (Int) -> Unit,
+    onVibrationChanged: (Boolean) -> Unit,
+    onReduceMotionChanged: (Boolean) -> Unit,
     onFullScreenHoldGestureChanged: (Boolean) -> Unit,
     onThemeModeChanged: (AppThemeMode) -> Unit,
     modifier: Modifier = Modifier,
@@ -102,6 +106,38 @@ fun SettingsScreen(
                 description = "Handpan можно отключить и оставить тишину",
                 checked = settings.holdingMusicEnabled,
                 onChecked = onHoldingMusicChanged,
+            )
+            Spacer(Modifier.height(16.dp))
+            TrainingSettingSlider(
+                label = "Громкость музыки",
+                valueLabel = "${settings.musicVolumePercent}%",
+                value = settings.musicVolumePercent.toFloat(),
+                range = 0f..100f,
+                steps = 9,
+                onValue = { onMusicVolumeChanged((it / 10).toInt() * 10) },
+            )
+            Spacer(Modifier.height(20.dp))
+            TrainingSettingSlider(
+                label = "Громкость сигнала",
+                valueLabel = "${settings.cueVolumePercent}%",
+                value = settings.cueVolumePercent.toFloat(),
+                range = 0f..100f,
+                steps = 9,
+                onValue = { onCueVolumeChanged((it / 10).toInt() * 10) },
+            )
+            Spacer(Modifier.height(20.dp))
+            PreferenceToggle(
+                title = "Вибрация при переходе",
+                description = "Тактильный сигнал перед задержкой",
+                checked = settings.vibrationEnabled,
+                onChecked = onVibrationChanged,
+            )
+            Spacer(Modifier.height(16.dp))
+            PreferenceToggle(
+                title = "Уменьшить анимацию",
+                description = "Статичные волны и дыхательные круги",
+                checked = settings.reduceMotion,
+                onChecked = onReduceMotionChanged,
             )
             Spacer(Modifier.height(16.dp))
             PreferenceToggle(

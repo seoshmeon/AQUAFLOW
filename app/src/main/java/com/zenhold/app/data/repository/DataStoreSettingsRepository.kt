@@ -28,6 +28,10 @@ class DataStoreSettingsRepository @Inject constructor(
         val preparation = longPreferencesKey("preparation_duration_ms")
         val preparationMusic = booleanPreferencesKey("preparation_music_enabled")
         val holdingMusic = booleanPreferencesKey("holding_music_enabled")
+        val musicVolume = intPreferencesKey("music_volume_percent")
+        val cueVolume = intPreferencesKey("cue_volume_percent")
+        val vibration = booleanPreferencesKey("vibration_enabled")
+        val reduceMotion = booleanPreferencesKey("reduce_motion")
         val fullScreenHoldGesture = booleanPreferencesKey("full_screen_hold_gesture")
         val themeMode = stringPreferencesKey("theme_mode")
     }
@@ -42,6 +46,10 @@ class DataStoreSettingsRepository @Inject constructor(
                 ?: 30_000L,
             preparationMusicEnabled = values[Keys.preparationMusic] ?: true,
             holdingMusicEnabled = values[Keys.holdingMusic] ?: true,
+            musicVolumePercent = (values[Keys.musicVolume] ?: 20).coerceIn(0, 100),
+            cueVolumePercent = (values[Keys.cueVolume] ?: 70).coerceIn(0, 100),
+            vibrationEnabled = values[Keys.vibration] ?: true,
+            reduceMotion = values[Keys.reduceMotion] ?: false,
             fullScreenHoldGesture = values[Keys.fullScreenHoldGesture] ?: true,
             themeMode = values[Keys.themeMode]
                 ?.let { stored -> AppThemeMode.entries.firstOrNull { it.name == stored } }
@@ -56,6 +64,10 @@ class DataStoreSettingsRepository @Inject constructor(
             values[Keys.preparation] = settings.preparationDurationMillis
             values[Keys.preparationMusic] = settings.preparationMusicEnabled
             values[Keys.holdingMusic] = settings.holdingMusicEnabled
+            values[Keys.musicVolume] = settings.musicVolumePercent
+            values[Keys.cueVolume] = settings.cueVolumePercent
+            values[Keys.vibration] = settings.vibrationEnabled
+            values[Keys.reduceMotion] = settings.reduceMotion
             values[Keys.fullScreenHoldGesture] = settings.fullScreenHoldGesture
             values[Keys.themeMode] = settings.themeMode.name
         }

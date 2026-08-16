@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:left="17dp" android:top="17dp" android:right="17dp" android:bottom="17dp">
+        <bitmap
+            android:src="@drawable/aquaflow_mark"
+            android:gravity="fill" />
+    </item>
+</layer-list>

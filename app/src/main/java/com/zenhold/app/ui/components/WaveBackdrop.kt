@@ -20,15 +20,18 @@ import kotlin.math.sin
 
 /** Low-contrast water movement shared by non-hold screens. It never displays timing data. */
 @Composable
-fun WaveBackdrop(modifier: Modifier = Modifier) {
+fun WaveBackdrop(modifier: Modifier = Modifier, reduceMotion: Boolean = false) {
     val accent = MaterialTheme.colorScheme.primary
-    val transition = rememberInfiniteTransition(label = "ambient waves")
-    val phase by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = (2f * PI).toFloat(),
-        animationSpec = infiniteRepeatable(tween(12_000, easing = LinearEasing)),
-        label = "wave phase",
-    )
+    val phase = if (reduceMotion) 0f else {
+        val transition = rememberInfiniteTransition(label = "ambient waves")
+        val animatedPhase by transition.animateFloat(
+            initialValue = 0f,
+            targetValue = (2f * PI).toFloat(),
+            animationSpec = infiniteRepeatable(tween(12_000, easing = LinearEasing)),
+            label = "wave phase",
+        )
+        animatedPhase
+    }
 
     Canvas(modifier) {
         val layers = listOf(

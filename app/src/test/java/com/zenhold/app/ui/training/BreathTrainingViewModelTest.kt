@@ -85,6 +85,24 @@ class BreathTrainingViewModelTest {
     }
 
     @Test
+    fun backgroundInterruption_duringPreparation_entersSafeInterruptedState() = runTest(dispatcher) {
+        val repository = FakeRecordRepository()
+        val viewModel = BreathTrainingViewModel(
+            records = repository,
+            audio = FakeAudioController(),
+            clock = ElapsedRealtimeClock { testScheduler.currentTime },
+        )
+
+        viewModel.startTraining(TrainingSettings())
+        advanceTimeBy(5_000L)
+        viewModel.interruptForSafety()
+        runCurrent()
+
+        assertTrue(viewModel.state.value is TrainingState.Interrupted)
+        assertTrue(repository.saved.isEmpty())
+    }
+
+    @Test
     fun repeatedStopHolding_savesOnlyOneRecord() = runTest(dispatcher) {
         val repository = FakeRecordRepository()
         val viewModel = BreathTrainingViewModel(
@@ -128,6 +146,7 @@ private class FakeRecordRepository : RecordRepository {
 }
 
 private class FakeAudioController : TrainingAudioController {
+    override fun configure(musicVolumePercent: Int, cueVolumePercent: Int, vibrationEnabled: Boolean) = Unit
     override suspend fun startPreparationMusic() = Unit
     override fun stopPreparationMusic() = Unit
     override fun startHoldingMusic() = Unit

@@ -66,7 +66,7 @@ fun SafetyScreen(modifier: Modifier = Modifier) {
                 Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Остановитесь сразу", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
                     Text(
-                        "При боли, выраженном головокружении, нарушении зрения, онемении или необычной слабости завершите тренировку. APIRA не является медицинским устройством.",
+                        "При боли, выраженном головокружении, нарушении зрения, онемении или необычной слабости завершите тренировку. AQUAFLOW не является медицинским устройством.",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }

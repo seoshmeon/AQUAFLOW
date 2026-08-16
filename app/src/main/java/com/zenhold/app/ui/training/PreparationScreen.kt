@@ -38,16 +38,20 @@ import com.zenhold.app.ui.util.keepScreenOn
 fun PreparationScreen(
     state: TrainingState.Preparation,
     onSkip: () -> Unit,
+    reduceMotion: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val accent = MaterialTheme.colorScheme.primary
-    val transition = rememberInfiniteTransition(label = "preparation")
-    val pulse by transition.animateFloat(
-        initialValue = 0.72f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(5_500), RepeatMode.Reverse),
-        label = "slow breath",
-    )
+    val pulse = if (reduceMotion) 1f else {
+        val transition = rememberInfiniteTransition(label = "preparation")
+        val animatedPulse by transition.animateFloat(
+            initialValue = 0.72f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(tween(5_500), RepeatMode.Reverse),
+            label = "slow breath",
+        )
+        animatedPulse
+    }
     BoxWithConstraints(modifier.fillMaxSize().keepScreenOn(), contentAlignment = Alignment.Center) {
         val circleSize = minOf(maxWidth * .76f, maxHeight * .48f, 330.dp).coerceAtLeast(190.dp)
         NeumorphicPanel(

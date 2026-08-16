@@ -58,6 +58,7 @@ import dagger.hilt.android.AndroidEntryPoint
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        setTheme(R.style.Theme_ZenHold)
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent { ZenHoldApp() }
@@ -91,7 +92,10 @@ private fun ZenHoldApp(
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_STOP && latestTrainingState is TrainingState.Holding) {
+            if (event == Lifecycle.Event.ON_STOP && latestTrainingState !is TrainingState.Idle &&
+                latestTrainingState !is TrainingState.Finished &&
+                latestTrainingState !is TrainingState.Interrupted
+            ) {
                 trainingViewModel.interruptForSafety()
             }
         }
@@ -119,7 +123,7 @@ private fun ZenHoldApp(
         Surface(Modifier.fillMaxSize()) {
             Box(Modifier.fillMaxSize()) {
                 if (trainingState !is TrainingState.Holding) {
-                    WaveBackdrop(Modifier.fillMaxSize())
+                    WaveBackdrop(Modifier.fillMaxSize(), reduceMotion = settings.reduceMotion)
                 }
                 when (destination) {
                     Destination.Home -> HomeScreen(
@@ -134,6 +138,10 @@ private fun ZenHoldApp(
                         onPreparationSecondsChanged = homeViewModel::setPreparationSeconds,
                         onPreparationMusicChanged = homeViewModel::setPreparationMusicEnabled,
                         onHoldingMusicChanged = homeViewModel::setHoldingMusicEnabled,
+                        onMusicVolumeChanged = homeViewModel::setMusicVolumePercent,
+                        onCueVolumeChanged = homeViewModel::setCueVolumePercent,
+                        onVibrationChanged = homeViewModel::setVibrationEnabled,
+                        onReduceMotionChanged = homeViewModel::setReduceMotion,
                         onFullScreenHoldGestureChanged = homeViewModel::setFullScreenHoldGesture,
                         onThemeModeChanged = homeViewModel::setThemeMode,
                     )
@@ -157,13 +165,22 @@ private fun ZenHoldApp(
                     Destination.Safety -> SafetyScreen()
                     Destination.Training -> when (val state = trainingState) {
                         TrainingState.Idle -> destination = Destination.Home
-                        is TrainingState.Preparation -> PreparationScreen(state, trainingViewModel::skipPreparation)
+                        is TrainingState.Preparation -> PreparationScreen(
+                            state,
+                            trainingViewModel::skipPreparation,
+                            reduceMotion = settings.reduceMotion,
+                        )
                         is TrainingState.Holding -> HoldScreen(
                             fullScreenGesture = state.fullScreenGesture,
                             gestureEnabled = state.gestureEnabled,
+                            reduceMotion = settings.reduceMotion,
                             onStopHolding = trainingViewModel::stopHolding,
                         )
-                        is TrainingState.Recovering -> RecoveryScreen(state, trainingViewModel::setComfortRating)
+                        is TrainingState.Recovering -> RecoveryScreen(
+                            state,
+                            trainingViewModel::setComfortRating,
+                            reduceMotion = settings.reduceMotion,
+                        )
                         is TrainingState.Finished -> FinishedScreen(
                             state = state,
                             onDone = {

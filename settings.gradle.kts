@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "APIRA"
+rootProject.name = "AQUAFLOW"
 include(":app")

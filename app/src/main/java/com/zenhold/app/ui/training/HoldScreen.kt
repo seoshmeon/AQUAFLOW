@@ -44,6 +44,7 @@ import androidx.core.view.WindowInsetsCompat
 fun HoldScreen(
     fullScreenGesture: Boolean,
     gestureEnabled: Boolean,
+    reduceMotion: Boolean = false,
     onStopHolding: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -64,13 +65,16 @@ fun HoldScreen(
             wasLightNavigationBars?.let { controller?.isAppearanceLightNavigationBars = it }
         }
     }
-    val transition = rememberInfiniteTransition(label = "hold target")
-    val pulse by transition.animateFloat(
-        initialValue = .96f,
-        targetValue = 1.03f,
-        animationSpec = infiniteRepeatable(tween(2_400), RepeatMode.Reverse),
-        label = "target pulse",
-    )
+    val pulse = if (reduceMotion) 1f else {
+        val transition = rememberInfiniteTransition(label = "hold target")
+        val animatedPulse by transition.animateFloat(
+            initialValue = .96f,
+            targetValue = 1.03f,
+            animationSpec = infiniteRepeatable(tween(2_400), RepeatMode.Reverse),
+            label = "target pulse",
+        )
+        animatedPulse
+    }
     val gestureModifier = if (fullScreenGesture && gestureEnabled) {
         Modifier.pointerInput(onStopHolding) {
             detectTapGestures(onDoubleTap = { onStopHolding() })
