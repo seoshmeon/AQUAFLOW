@@ -8,7 +8,7 @@ plugins {
     id("com.google.dagger.hilt.android")
 }
 
-val appVersionName = "2.3.0"
+val appVersionName = "2.3.1"
 val releasePropertiesFile = rootProject.file("keystore.properties")
 val releaseProperties = Properties().apply {
     if (releasePropertiesFile.exists()) releasePropertiesFile.inputStream().use(::load)
@@ -22,7 +22,7 @@ android {
         applicationId = "com.zenhold.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 15
+        versionCode = 16
         versionName = appVersionName
 
         buildConfigField("String", "AQUAFLOW_API_URL", "\"https://aquaflow-bot.seoshmeon.workers.dev\"")

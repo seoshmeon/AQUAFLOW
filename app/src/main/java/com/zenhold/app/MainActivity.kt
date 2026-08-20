@@ -139,9 +139,22 @@ private fun ZenHoldApp(
         }
     }
 
+    // The ViewModel survives configuration changes. Keep navigation attached to its active
+    // phase as well, so a rotation can never reveal Home while a timer is still running.
+    LaunchedEffect(trainingState) {
+        if (trainingState is TrainingState.Preparation ||
+            trainingState is TrainingState.Holding ||
+            trainingState is TrainingState.Recovering
+        ) {
+            destination = Destination.Training
+        }
+    }
+
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_STOP && latestTrainingState !is TrainingState.Idle &&
+            // Rotation recreates Activity and also emits ON_STOP, but is not a safety interruption.
+            if (event == Lifecycle.Event.ON_STOP && activity?.isChangingConfigurations != true &&
+                latestTrainingState !is TrainingState.Idle &&
                 latestTrainingState !is TrainingState.Finished &&
                 latestTrainingState !is TrainingState.Interrupted
             ) {
