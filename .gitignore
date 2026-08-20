@@ -10,6 +10,12 @@ captures/
 *.jks
 *.keystore
 keystore.properties
+cloud/functions/node_modules/
+cloud/functions/lib/
+cloud/functions/.env
+cloud/.firebase/
+cloud/firebase-debug.log
+cloud/*-debug.log
 
 # Local visual QA evidence is useful during development but does not belong in releases.
 audit-*/

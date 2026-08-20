@@ -1,0 +1,25 @@
+{
+  "name": "aquaflow-cloud",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": "22"
+  },
+  "main": "lib/index.js",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "check": "npm run build && npm test"
+  },
+  "dependencies": {
+    "firebase-admin": "14.3.0",
+    "firebase-functions": "7.3.2"
+  },
+  "overrides": {
+    "uuid": "11.1.1"
+  },
+  "devDependencies": {
+    "typescript": "7.0.2",
+    "vitest": "4.1.11"
+  }
+}

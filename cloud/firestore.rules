@@ -1,0 +1,49 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function owns(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    // Training history is private. Writes go through the validated sync endpoint.
+    match /users/{userId} {
+      allow read: if owns(userId);
+      allow write: if false;
+
+      match /records/{recordId} {
+        allow read: if owns(userId);
+        allow write: if false;
+      }
+
+      match /monthly/{period} {
+        allow read: if owns(userId);
+        allow write: if false;
+      }
+    }
+
+    match /stats/{userId} {
+      allow read: if owns(userId);
+      allow write: if false;
+    }
+
+    // Contains only an alias and aggregate values after explicit opt-in.
+    match /leaderboards/allTime/entries/{userId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Telegram mappings and one-time codes are server-only.
+    match /telegramUsers/{chatId} {
+      allow read, write: if false;
+    }
+
+    match /linkCodes/{codeHash} {
+      allow read, write: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
