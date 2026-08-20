@@ -19,6 +19,10 @@ class RoomRecordRepository @Inject constructor(
         dao.getForSession(sessionId)
     override suspend fun save(record: BreathHoldRecord): Long = dao.insert(record)
     override suspend fun updateComfort(recordId: Long, rating: Int) = dao.updateComfort(recordId, rating)
+    override suspend fun updateFeedback(recordId: Long, rating: Int, reason: String) =
+        dao.updateFeedback(recordId, rating, reason)
+    override suspend fun updateActualRecovery(recordId: Long, durationMillis: Long) =
+        dao.updateActualRecovery(recordId, durationMillis)
     override suspend fun updateSessionNote(sessionId: String, note: String) =
         dao.updateSessionNote(sessionId, note).also { sessions.updateNote(sessionId, note) }
     override suspend fun startSession(session: TrainingSessionEntity) = sessions.upsert(session)

@@ -7,6 +7,8 @@ import com.zenhold.app.domain.model.TrainingSettings
 import com.zenhold.app.domain.model.TrainingState
 import com.zenhold.app.domain.model.CueStyle
 import com.zenhold.app.domain.model.VibrationStrength
+import com.zenhold.app.domain.model.ComfortRating
+import com.zenhold.app.domain.model.RecoveryStopReason
 import com.zenhold.app.domain.repository.RecordRepository
 import com.zenhold.app.util.ElapsedRealtimeClock
 import kotlinx.coroutines.Dispatchers
@@ -65,6 +67,11 @@ class BreathTrainingViewModelTest {
         assertEquals(42_000L, repository.saved.single().holdDurationMillis)
 
         advanceTimeBy(30_000L)
+        runCurrent()
+        assertTrue(viewModel.state.value is TrainingState.Recovering)
+        viewModel.setComfortRating(ComfortRating.Comfortable)
+        viewModel.setStopReason(RecoveryStopReason.ComfortableLimit)
+        viewModel.completeRecoveryEarly()
         runCurrent()
         assertTrue(viewModel.state.value is TrainingState.Finished)
         assertEquals(TrainingSessionEntity.STATUS_COMPLETED, repository.finishedStatus)
@@ -142,10 +149,29 @@ class BreathTrainingViewModelTest {
 
         viewModel.extendRecovery()
         assertEquals(60_000L, (viewModel.state.value as TrainingState.Recovering).totalRecoveryMillis)
+        viewModel.setComfortRating(ComfortRating.Easy)
+        viewModel.setStopReason(RecoveryStopReason.ComfortableLimit)
         viewModel.completeRecoveryEarly()
         runCurrent()
 
         assertTrue(viewModel.state.value is TrainingState.Finished)
+    }
+
+    @Test
+    fun firstDiscomfort_isStoredPrivately_withoutExposingElapsedTime() = runTest(dispatcher) {
+        val repository = FakeRecordRepository()
+        val viewModel = BreathTrainingViewModel(repository, FakeAudioController(), ElapsedRealtimeClock { testScheduler.currentTime })
+        viewModel.startTraining(TrainingSettings(attemptCount = 1, recoveryDurationMillis = 30_000L))
+        advanceTimeBy(BreathTrainingViewModel.PREPARATION_MILLIS + 1_600L)
+        runCurrent()
+        advanceTimeBy(18_000L)
+        viewModel.markFirstDiscomfort()
+        advanceTimeBy(12_000L)
+        viewModel.stopHolding()
+        runCurrent()
+
+        assertEquals(19_600L, repository.saved.single().firstDiscomfortMillis)
+        assertTrue(viewModel.state.value is TrainingState.Recovering)
     }
 
     @Test
@@ -195,6 +221,14 @@ private class FakeRecordRepository(initialSessions: List<TrainingSessionEntity> 
     override suspend fun updateComfort(recordId: Long, rating: Int) {
         val index = recordId.toInt() - 1
         if (index >= 0) saved[index] = saved[index].copy(comfortRating = rating)
+    }
+    override suspend fun updateFeedback(recordId: Long, rating: Int, reason: String) {
+        val index = recordId.toInt() - 1
+        if (index >= 0) saved[index] = saved[index].copy(comfortRating = rating, stopReason = reason)
+    }
+    override suspend fun updateActualRecovery(recordId: Long, durationMillis: Long) {
+        val index = recordId.toInt() - 1
+        if (index >= 0) saved[index] = saved[index].copy(actualRecoveryDurationMillis = durationMillis)
     }
     override suspend fun updateSessionNote(sessionId: String, note: String) {
         saved.indices.filter { saved[it].sessionId == sessionId }.forEach { index ->

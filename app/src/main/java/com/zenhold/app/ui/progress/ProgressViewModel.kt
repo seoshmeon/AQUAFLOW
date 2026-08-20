@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.zenhold.app.data.local.BreathHoldRecord
 import com.zenhold.app.data.local.TrainingSessionEntity
 import com.zenhold.app.domain.repository.RecordRepository
+import com.zenhold.app.domain.model.TrainingProgram
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import java.time.Instant
@@ -46,6 +47,9 @@ data class SessionSummary(
     val energyLevel: Int = attempts.firstOrNull()?.energyLevel ?: 3,
     val stressLevel: Int = attempts.firstOrNull()?.stressLevel ?: 2,
     val interruptionReason: String = "",
+    val sleepQuality: Int = 3,
+    val program: String = "ADAPTIVE",
+    val readinessLevel: String = "OPTIMAL",
 )
 
 data class SessionPoint(
@@ -67,6 +71,15 @@ data class MonthPoint(
 
 data class PersonalRecord(val title: String, val value: String, val description: String)
 
+data class WeeklyCoachPlan(
+    val title: String = "Мягкий старт",
+    val message: String = "Начните с комфортной адаптивной сессии.",
+    val completedSessions: Int = 0,
+    val recommendedSessions: Int = 2,
+    val programLabel: String = "Адаптивная",
+    val recommendedProgram: TrainingProgram = TrainingProgram.Adaptive,
+)
+
 data class ProgressUiState(
     val sessions: List<SessionPoint> = emptyList(),
     val months: List<MonthPoint> = emptyList(),
@@ -75,6 +88,9 @@ data class ProgressUiState(
     val recentAverageMillis: Long = 0L,
     val comfortableAverageMillis: Long = 0L,
     val ratedAttemptCount: Int = 0,
+    val firstDiscomfortAverageMillis: Long = 0L,
+    val actualRecoveryAverageMillis: Long = 0L,
+    val stabilityPercent: Int = 0,
     val selectedPeriod: ProgressPeriod = ProgressPeriod.Month,
     val comparisonPercent: Float? = null,
     val calendarMonthLabel: String = "",
@@ -83,6 +99,7 @@ data class ProgressUiState(
     val sessionSummaries: List<SessionSummary> = emptyList(),
     val personalRecords: List<PersonalRecord> = emptyList(),
     val insights: List<String> = emptyList(),
+    val weeklyPlan: WeeklyCoachPlan = WeeklyCoachPlan(),
 )
 
 @HiltViewModel
@@ -123,6 +140,7 @@ internal fun buildProgressState(
             calendarMonthLabel = YearMonth.from(now).format(monthFormatter)
                 .replaceFirstChar { it.titlecase() },
             achievements = defaultAchievements(),
+            weeklyPlan = buildWeeklyCoachPlan(records, sessionEntities, nowMillis),
             sessionSummaries = sessionEntities.map { session ->
                 SessionSummary(
                     sessionId = session.sessionId,
@@ -136,6 +154,9 @@ internal fun buildProgressState(
                     energyLevel = session.energyLevel,
                     stressLevel = session.stressLevel,
                     interruptionReason = session.interruptionReason,
+                    sleepQuality = session.sleepQuality,
+                    program = session.program,
+                    readinessLevel = session.readinessLevel,
                 )
             }.sortedByDescending { it.timestamp },
         )
@@ -217,9 +238,21 @@ internal fun buildProgressState(
                 energyLevel = metadata?.energyLevel ?: attempts.firstOrNull()?.energyLevel ?: 3,
                 stressLevel = metadata?.stressLevel ?: attempts.firstOrNull()?.stressLevel ?: 2,
                 interruptionReason = metadata?.interruptionReason.orEmpty(),
+                sleepQuality = metadata?.sleepQuality ?: 3,
+                program = metadata?.program ?: "ADAPTIVE",
+                readinessLevel = metadata?.readinessLevel ?: "OPTIMAL",
             )
         }.sortedByDescending { it.timestamp }
         val comfortableCount = records.count { it.comfortRating == 1 || it.comfortRating == 2 }
+        val firstUrgeRecords = records.filter { it.firstDiscomfortMillis > 0L }
+        val recoveryRecords = records.filter { it.actualRecoveryDurationMillis > 0L }
+        val stabilityScores = allSessions.mapNotNull { summary ->
+            if (summary.attempts.size < 2 || summary.maximumMillis <= 0L) null else {
+                val minimum = summary.attempts.minOf { it.holdDurationMillis }
+                (100f - (summary.maximumMillis - minimum) * 100f / summary.maximumMillis)
+                    .coerceIn(0f, 100f)
+            }
+        }
         val stableSession = allSessions.any { summary ->
             val min = summary.attempts.minOfOrNull { it.holdDurationMillis } ?: 0L
             val max = summary.maximumMillis
@@ -275,6 +308,17 @@ internal fun buildProgressState(
                     add("Последние сессии: среднее ${formatMillis(recent.average().toLong())}; ранее — ${formatMillis(earlier.average().toLong())}.")
                 }
             }
+            if (firstUrgeRecords.size >= 4) {
+                val recentUrges = firstUrgeRecords.sortedByDescending { it.timestamp }.take(3)
+                    .map { it.firstDiscomfortMillis }.average().toLong()
+                add("Комфортная фаза последних подходов в среднем длится ${formatMillis(recentUrges)}.")
+            }
+            if (records.sortedByDescending { it.timestamp }.take(6).count { it.comfortRating == 4 } >= 2) {
+                add("Несколько последних подходов ощущались слишком тяжёлыми — следующую сессию лучше сделать восстановительной.")
+            }
+            if (recoveryRecords.size >= 3) {
+                add("Фактическое восстановление: в среднем ${formatMillis(recoveryRecords.map { it.actualRecoveryDurationMillis }.average().toLong())}.")
+            }
             if (isEmpty()) add("Добавьте ещё несколько комфортных сессий — здесь появятся нейтральные наблюдения по вашей практике.")
         }
         return ProgressUiState(
@@ -294,6 +338,12 @@ internal fun buildProgressState(
                 ?.toLong()
                 ?: 0L,
             ratedAttemptCount = records.count { it.comfortRating != 0 },
+            firstDiscomfortAverageMillis = firstUrgeRecords.takeIf { it.isNotEmpty() }
+                ?.map { it.firstDiscomfortMillis }?.average()?.toLong() ?: 0L,
+            actualRecoveryAverageMillis = recoveryRecords.takeIf { it.isNotEmpty() }
+                ?.map { it.actualRecoveryDurationMillis }?.average()?.toLong() ?: 0L,
+            stabilityPercent = stabilityScores.takeIf { it.isNotEmpty() }
+                ?.average()?.toInt() ?: 0,
             selectedPeriod = selectedPeriod,
             comparisonPercent = comparison,
             calendarMonthLabel = currentMonth.format(monthFormatter).replaceFirstChar { it.titlecase() },
@@ -302,7 +352,56 @@ internal fun buildProgressState(
             sessionSummaries = allSessions,
             personalRecords = personalRecords,
             insights = insights,
+            weeklyPlan = buildWeeklyCoachPlan(records, sessionEntities, nowMillis),
         )
+}
+
+internal fun buildWeeklyCoachPlan(
+    records: List<BreathHoldRecord>,
+    sessions: List<TrainingSessionEntity>,
+    nowMillis: Long = System.currentTimeMillis(),
+): WeeklyCoachPlan {
+    val weekStart = nowMillis - 7L * 24L * 60L * 60L * 1_000L
+    val completed = sessions.count {
+        it.startedAt >= weekStart && it.status == TrainingSessionEntity.STATUS_COMPLETED
+    }.takeIf { it > 0 } ?: records.filter { it.timestamp >= weekStart }
+        .map { it.sessionId }.distinct().size
+    val recent = records.sortedByDescending { it.timestamp }.take(6)
+    val hardCount = recent.count { it.comfortRating == 4 }
+    val comfortableCount = recent.count { it.comfortRating in 1..2 }
+    return when {
+        hardCount >= 2 -> WeeklyCoachPlan(
+            title = "Неделя восстановления",
+            message = "Несколько подходов были слишком тяжёлыми. Снизьте объём и не стремитесь к максимуму.",
+            completedSessions = completed,
+            recommendedSessions = 2,
+            programLabel = "Восстановление",
+            recommendedProgram = TrainingProgram.Recovery,
+        )
+        completed >= 3 -> WeeklyCoachPlan(
+            title = "План недели выполнен",
+            message = "Объём уже достаточный. Отдых сейчас полезнее дополнительной рекордной попытки.",
+            completedSessions = completed,
+            recommendedSessions = 3,
+            programLabel = "Отдых",
+            recommendedProgram = TrainingProgram.Recovery,
+        )
+        comfortableCount >= 4 -> WeeklyCoachPlan(
+            title = "Закрепляем стабильность",
+            message = "Комфорт сохраняется. Повторите ровную сессию без увеличения предельной задержки.",
+            completedSessions = completed,
+            recommendedSessions = 3,
+            programLabel = "Стабильность",
+            recommendedProgram = TrainingProgram.Stability,
+        )
+        else -> WeeklyCoachPlan(
+            title = if (completed == 0) "Мягкий старт недели" else "Продолжаем спокойно",
+            message = "Работайте до личной границы комфорта и отмечайте первый позыв к вдоху.",
+            completedSessions = completed,
+            recommendedSessions = 2,
+            programLabel = "Адаптивная",
+        )
+    }
 }
 
 private fun formatMillis(value: Long): String {

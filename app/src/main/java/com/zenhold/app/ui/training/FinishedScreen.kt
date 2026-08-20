@@ -58,7 +58,22 @@ fun FinishedScreen(state: TrainingState.Finished, onDone: () -> Unit, modifier: 
             fontWeight = FontWeight.Light,
             color = accent,
         )
-        Spacer(Modifier.height(36.dp))
+        if (state.coachMessage.isNotBlank()) {
+            Spacer(Modifier.height(24.dp))
+            NeumorphicPanel(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(24.dp),
+            ) {
+                Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Комментарий тренера", color = accent, fontWeight = FontWeight.SemiBold)
+                    Text(state.coachMessage, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (state.nextSessionAdvice.isNotBlank()) {
+                        Text(state.nextSessionAdvice, fontWeight = FontWeight.Medium)
+                    }
+                }
+            }
+        }
+        Spacer(Modifier.height(28.dp))
         NeumorphicAction(
             onClick = onDone,
             modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),

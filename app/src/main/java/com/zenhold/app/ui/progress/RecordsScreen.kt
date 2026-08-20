@@ -142,7 +142,12 @@ private fun SessionHistoryCard(session: SessionSummary, onSaveNote: (String, Str
             if (expanded) {
                 Spacer(Modifier.height(14.dp))
                 Text(
-                    "Энергия ${session.energyLevel}/5 · напряжение ${session.stressLevel}/5",
+                    "Энергия ${session.energyLevel}/5 · напряжение ${session.stressLevel}/5 · сон ${session.sleepQuality}/5",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 12.sp,
+                )
+                Text(
+                    "Программа: ${programLabel(session.program)} · готовность: ${readinessLabel(session.readinessLevel)}",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 12.sp,
                 )
@@ -192,9 +197,39 @@ private fun RecordRow(record: BreathHoldRecord) {
             if (record.comfortRating != 0) {
                 Text(comfortLabel(record.comfortRating), fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
             }
+            if (record.firstDiscomfortMillis > 0L) {
+                Text(
+                    "Первый позыв ${formatDuration(record.firstDiscomfortMillis)}",
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            if (record.actualRecoveryDurationMillis > 0L) {
+                Text(
+                    "Восстановление ${formatDuration(record.actualRecoveryDurationMillis)}",
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
         Text(formatDuration(record.holdDurationMillis), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Medium)
     }
+}
+
+private fun programLabel(value: String): String = when (value.uppercase()) {
+    "INTRO" -> "знакомство"
+    "COMFORT" -> "комфорт"
+    "STABILITY" -> "стабильность"
+    "RECOVERY" -> "восстановление"
+    "FREE" -> "свободная"
+    else -> "адаптивная"
+}
+
+private fun readinessLabel(value: String): String = when (value.uppercase()) {
+    "REDUCED" -> "снижена"
+    "RECOVERY" -> "восстановление"
+    "STOP" -> "стоп"
+    else -> "хорошая"
 }
 
 private fun comfortLabel(value: Int): String = when (value) {

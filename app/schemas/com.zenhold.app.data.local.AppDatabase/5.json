@@ -1,0 +1,220 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 5,
+    "identityHash": "2ec734d81acb86696d8df6c101daf4ae",
+    "entities": [
+      {
+        "tableName": "breath_hold_records",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `holdDurationMillis` INTEGER NOT NULL, `recoveryDurationMillis` INTEGER NOT NULL, `timestamp` INTEGER NOT NULL, `sessionId` TEXT NOT NULL, `attemptNumber` INTEGER NOT NULL, `comfortRating` INTEGER NOT NULL DEFAULT 0, `energyLevel` INTEGER NOT NULL DEFAULT 3, `stressLevel` INTEGER NOT NULL DEFAULT 2, `sessionNote` TEXT NOT NULL DEFAULT '', `firstDiscomfortMillis` INTEGER NOT NULL DEFAULT 0, `actualRecoveryDurationMillis` INTEGER NOT NULL DEFAULT 0, `stopReason` TEXT NOT NULL DEFAULT '')",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "holdDurationMillis",
+            "columnName": "holdDurationMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "recoveryDurationMillis",
+            "columnName": "recoveryDurationMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "timestamp",
+            "columnName": "timestamp",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sessionId",
+            "columnName": "sessionId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "attemptNumber",
+            "columnName": "attemptNumber",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "comfortRating",
+            "columnName": "comfortRating",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "energyLevel",
+            "columnName": "energyLevel",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "3"
+          },
+          {
+            "fieldPath": "stressLevel",
+            "columnName": "stressLevel",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "2"
+          },
+          {
+            "fieldPath": "sessionNote",
+            "columnName": "sessionNote",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "''"
+          },
+          {
+            "fieldPath": "firstDiscomfortMillis",
+            "columnName": "firstDiscomfortMillis",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "actualRecoveryDurationMillis",
+            "columnName": "actualRecoveryDurationMillis",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "stopReason",
+            "columnName": "stopReason",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "''"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "training_sessions",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`sessionId` TEXT NOT NULL, `startedAt` INTEGER NOT NULL, `endedAt` INTEGER NOT NULL DEFAULT 0, `plannedAttempts` INTEGER NOT NULL, `completedAttempts` INTEGER NOT NULL DEFAULT 0, `preparationDurationMillis` INTEGER NOT NULL, `recoveryDurationMillis` INTEGER NOT NULL, `energyLevel` INTEGER NOT NULL, `stressLevel` INTEGER NOT NULL, `status` TEXT NOT NULL DEFAULT 'ACTIVE', `interruptionReason` TEXT NOT NULL DEFAULT '', `note` TEXT NOT NULL DEFAULT '', `sleepQuality` INTEGER NOT NULL DEFAULT 3, `program` TEXT NOT NULL DEFAULT 'ADAPTIVE', `readinessLevel` TEXT NOT NULL DEFAULT 'OPTIMAL', PRIMARY KEY(`sessionId`))",
+        "fields": [
+          {
+            "fieldPath": "sessionId",
+            "columnName": "sessionId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "startedAt",
+            "columnName": "startedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "endedAt",
+            "columnName": "endedAt",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "plannedAttempts",
+            "columnName": "plannedAttempts",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "completedAttempts",
+            "columnName": "completedAttempts",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "preparationDurationMillis",
+            "columnName": "preparationDurationMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "recoveryDurationMillis",
+            "columnName": "recoveryDurationMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "energyLevel",
+            "columnName": "energyLevel",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "stressLevel",
+            "columnName": "stressLevel",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'ACTIVE'"
+          },
+          {
+            "fieldPath": "interruptionReason",
+            "columnName": "interruptionReason",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "''"
+          },
+          {
+            "fieldPath": "note",
+            "columnName": "note",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "''"
+          },
+          {
+            "fieldPath": "sleepQuality",
+            "columnName": "sleepQuality",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "3"
+          },
+          {
+            "fieldPath": "program",
+            "columnName": "program",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'ADAPTIVE'"
+          },
+          {
+            "fieldPath": "readinessLevel",
+            "columnName": "readinessLevel",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'OPTIMAL'"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "sessionId"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '2ec734d81acb86696d8df6c101daf4ae')"
+    ]
+  }
+}

@@ -47,6 +47,7 @@ import com.zenhold.app.ui.components.NeumorphicAction
 import com.zenhold.app.ui.components.NeoTactilePrimaryAction
 import com.zenhold.app.ui.components.NeumorphicPanel
 import com.zenhold.app.ui.util.formatDuration
+import com.zenhold.app.ui.progress.WeeklyCoachPlan
 
 @Composable
 fun HomeScreen(
@@ -56,6 +57,7 @@ fun HomeScreen(
     resumableSession: TrainingSessionEntity? = null,
     onResumeSession: () -> Unit = {},
     onDiscardSession: () -> Unit = {},
+    weeklyPlan: WeeklyCoachPlan = WeeklyCoachPlan(),
     modifier: Modifier = Modifier,
 ) {
     val accent = MaterialTheme.colorScheme.primary
@@ -109,6 +111,8 @@ fun HomeScreen(
             }
 
             Spacer(Modifier.height(if (compact) 20.dp else 32.dp))
+            WeeklyCoachCard(weeklyPlan)
+            Spacer(Modifier.height(14.dp))
             resumableSession?.let { session ->
                 ResumeSessionCard(session, onResumeSession, onDiscardSession)
                 Spacer(Modifier.height(14.dp))
@@ -131,6 +135,25 @@ fun HomeScreen(
                 ProgressAction(onProgress, Modifier.fillMaxWidth())
             }
             Spacer(Modifier.height(12.dp))
+        }
+    }
+}
+
+@Composable
+private fun WeeklyCoachCard(plan: WeeklyCoachPlan) {
+    NeumorphicPanel(Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp), elevation = 9.dp) {
+        Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("ПЛАН ТРЕНЕРА", color = MaterialTheme.colorScheme.primary, fontSize = 11.sp, letterSpacing = 1.6.sp)
+                Text(
+                    "${plan.completedSessions}/${plan.recommendedSessions}",
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+            Text(plan.title, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleMedium)
+            Text(plan.message, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+            Text("Режим: ${plan.programLabel}", color = MaterialTheme.colorScheme.primary, fontSize = 12.sp)
         }
     }
 }

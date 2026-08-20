@@ -11,6 +11,8 @@ interface RecordRepository {
     suspend fun getSessionRecords(sessionId: String): List<BreathHoldRecord>
     suspend fun save(record: BreathHoldRecord): Long
     suspend fun updateComfort(recordId: Long, rating: Int)
+    suspend fun updateFeedback(recordId: Long, rating: Int, reason: String)
+    suspend fun updateActualRecovery(recordId: Long, durationMillis: Long)
     suspend fun updateSessionNote(sessionId: String, note: String)
     suspend fun startSession(session: TrainingSessionEntity)
     suspend fun updateSessionProgress(sessionId: String, completedAttempts: Int)

@@ -44,6 +44,7 @@ import androidx.core.view.WindowInsetsCompat
 fun HoldScreen(
     fullScreenGesture: Boolean,
     gestureEnabled: Boolean,
+    firstDiscomfortMarked: Boolean = false,
     reduceMotion: Boolean = false,
     onStopHolding: () -> Unit,
     modifier: Modifier = Modifier,
@@ -126,6 +127,7 @@ fun HoldScreen(
             Text(
                 when {
                     !gestureEnabled -> "Зона завершения активируется"
+                    firstDiscomfortMarked -> "Первый позыв отмечен · громкость − завершить"
                     fullScreenGesture -> "Два касания в любом месте"
                     else -> "Два касания внутри круга"
                 },
@@ -134,6 +136,15 @@ fun HoldScreen(
                 fontSize = 12.sp,
                 textAlign = TextAlign.Center,
             )
+            if (gestureEnabled && !firstDiscomfortMarked) {
+                Text(
+                    "Громкость + отметить первый позыв · − завершить",
+                    modifier = Modifier.padding(top = 10.dp),
+                    color = Color.White.copy(alpha = 0.26f),
+                    fontSize = 10.sp,
+                    textAlign = TextAlign.Center,
+                )
+            }
         }
     }
 }

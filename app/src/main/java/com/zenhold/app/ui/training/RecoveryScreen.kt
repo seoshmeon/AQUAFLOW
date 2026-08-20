@@ -21,8 +21,11 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -37,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zenhold.app.domain.model.TrainingState
 import com.zenhold.app.domain.model.ComfortRating
+import com.zenhold.app.domain.model.RecoveryStopReason
 import com.zenhold.app.ui.components.NeumorphicAction
 import com.zenhold.app.ui.components.NeumorphicPanel
 import com.zenhold.app.ui.util.formatDuration
@@ -46,6 +50,7 @@ import com.zenhold.app.ui.util.keepScreenOn
 fun RecoveryScreen(
     state: TrainingState.Recovering,
     onComfortSelected: (ComfortRating) -> Unit,
+    onStopReasonSelected: (RecoveryStopReason) -> Unit,
     onReady: () -> Unit,
     onExtend: () -> Unit,
     reduceMotion: Boolean = false,
@@ -70,9 +75,13 @@ fun RecoveryScreen(
       val pagePadding = if (maxWidth < 360.dp || maxHeight < 650.dp) 18.dp else 28.dp
       val circleSize = minOf(maxWidth * .68f, maxHeight * .34f, 270.dp).coerceAtLeast(164.dp)
       Column(
-        Modifier.align(Alignment.Center).fillMaxSize().padding(pagePadding),
+        Modifier.align(Alignment.TopCenter)
+            .fillMaxWidth()
+            .widthIn(max = 620.dp)
+            .verticalScroll(rememberScrollState())
+            .padding(pagePadding),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.SpaceBetween,
+        verticalArrangement = Arrangement.spacedBy(18.dp),
       ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text("РЕЗУЛЬТАТ", color = accent, letterSpacing = 3.sp, fontSize = 12.sp)
@@ -105,6 +114,8 @@ fun RecoveryScreen(
 
         ComfortPicker(state.comfortRating, onComfortSelected)
 
+        StopReasonPicker(state.stopReason, onStopReasonSelected)
+
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             NeumorphicAction(
                 onClick = onExtend,
@@ -112,6 +123,7 @@ fun RecoveryScreen(
             ) { Text("+30 секунд", fontSize = 12.sp) }
             NeumorphicAction(
                 onClick = onReady,
+                enabled = state.comfortRating != null && state.stopReason != null,
                 modifier = Modifier.weight(1f).heightIn(min = 46.dp),
                 color = MaterialTheme.colorScheme.primary,
             ) { Text("Я готов", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.SemiBold) }
@@ -122,6 +134,36 @@ fun RecoveryScreen(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
       }
+    }
+}
+
+@Composable
+private fun StopReasonPicker(
+    selected: RecoveryStopReason?,
+    onSelected: (RecoveryStopReason) -> Unit,
+) {
+    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        Text("Почему завершили подход?", fontWeight = FontWeight.SemiBold)
+        Spacer(Modifier.height(10.dp))
+        val options = listOf(
+            "Комфортный предел" to RecoveryStopReason.ComfortableLimit,
+            "Первые сокращения" to RecoveryStopReason.FirstContractions,
+            "Сильный позыв" to RecoveryStopReason.StrongUrge,
+            "Другое" to RecoveryStopReason.Other,
+        )
+        options.chunked(2).forEachIndexed { index, rowOptions ->
+            if (index > 0) Spacer(Modifier.height(10.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                rowOptions.forEach { (label, reason) ->
+                    ComfortAction(
+                        label = label,
+                        active = selected == reason,
+                        onClick = { onSelected(reason) },
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -151,9 +193,18 @@ private fun ComfortAction(
     onSelected: (ComfortRating) -> Unit,
     modifier: Modifier,
 ) {
-    val active = selected == rating
+    ComfortAction(label, selected == rating, { onSelected(rating) }, modifier)
+}
+
+@Composable
+private fun ComfortAction(
+    label: String,
+    active: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier,
+) {
     NeumorphicAction(
-        onClick = { onSelected(rating) },
+        onClick = onClick,
         modifier = modifier.heightIn(min = 44.dp),
         shape = RoundedCornerShape(7.dp),
         color = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,

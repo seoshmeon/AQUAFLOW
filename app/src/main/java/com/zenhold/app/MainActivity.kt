@@ -2,6 +2,7 @@ package com.zenhold.app
 
 import android.os.Bundle
 import android.app.Activity
+import android.view.KeyEvent
 import androidx.activity.compose.BackHandler
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -63,6 +64,17 @@ import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    private var trainingKeyHandler: ((Int) -> Boolean)? = null
+
+    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        if (event?.repeatCount == 0 && trainingKeyHandler?.invoke(keyCode) == true) return true
+        return super.onKeyDown(keyCode, event)
+    }
+
+    fun setTrainingKeyHandler(handler: ((Int) -> Boolean)?) {
+        trainingKeyHandler = handler
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         setTheme(R.style.Theme_ZenHold)
         super.onCreate(savedInstanceState)
@@ -98,6 +110,27 @@ private fun ZenHoldApp(
     var confirmSystemBack by rememberSaveable { mutableStateOf(false) }
     val lifecycleOwner = LocalLifecycleOwner.current
     val latestTrainingState by rememberUpdatedState(trainingState)
+
+    DisposableEffect(activity, trainingState) {
+        val mainActivity = activity as? MainActivity
+        val holding = trainingState as? TrainingState.Holding
+        mainActivity?.setTrainingKeyHandler(
+            if (holding?.gestureEnabled == true) { keyCode ->
+                when (keyCode) {
+                    KeyEvent.KEYCODE_VOLUME_UP -> {
+                        trainingViewModel.markFirstDiscomfort()
+                        true
+                    }
+                    KeyEvent.KEYCODE_VOLUME_DOWN -> {
+                        trainingViewModel.stopHolding()
+                        true
+                    }
+                    else -> false
+                }
+            } else null,
+        )
+        onDispose { mainActivity?.setTrainingKeyHandler(null) }
+    }
 
     LaunchedEffect(settings.onboardingCompleted) {
         if (!settings.onboardingCompleted && destination != Destination.Training) {
@@ -161,6 +194,7 @@ private fun ZenHoldApp(
                             destination = Destination.Training
                         },
                         onDiscardSession = trainingViewModel::discardResumableSession,
+                        weeklyPlan = progressState.weeklyPlan,
                         modifier = Modifier.padding(bottom = 72.dp),
                     )
                     Destination.Settings -> SettingsScreen(
@@ -191,6 +225,7 @@ private fun ZenHoldApp(
                     )
                     Destination.SessionPlan -> PreTrainingScreen(
                         settings = settings,
+                        initialProgram = progressState.weeklyPlan.recommendedProgram,
                         onStart = { checkIn ->
                             trainingViewModel.startTraining(settings, checkIn)
                             destination = Destination.Training
@@ -219,12 +254,14 @@ private fun ZenHoldApp(
                         is TrainingState.Holding -> HoldScreen(
                             fullScreenGesture = state.fullScreenGesture,
                             gestureEnabled = state.gestureEnabled,
+                            firstDiscomfortMarked = state.firstDiscomfortMarked,
                             reduceMotion = settings.reduceMotion,
                             onStopHolding = trainingViewModel::stopHolding,
                         )
                         is TrainingState.Recovering -> RecoveryScreen(
                             state,
                             trainingViewModel::setComfortRating,
+                            trainingViewModel::setStopReason,
                             trainingViewModel::completeRecoveryEarly,
                             trainingViewModel::extendRecovery,
                             reduceMotion = settings.reduceMotion,

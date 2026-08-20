@@ -52,5 +52,25 @@ class AppDatabaseMigrationTest {
         database.close()
     }
 
+    @Test
+    fun migration4To5_addsCoachFields_withoutChangingOldResults() = runBlocking {
+        helper.createDatabase(TEST_DB, 4).apply {
+            execSQL(
+                "INSERT INTO breath_hold_records " +
+                    "(id, holdDurationMillis, recoveryDurationMillis, timestamp, sessionId, attemptNumber, comfortRating, energyLevel, stressLevel, sessionNote) " +
+                    "VALUES (1, 55000, 90000, 1000, 'legacy-v4', 1, 2, 4, 1, '')",
+            )
+            close()
+        }
+
+        val database = Room.databaseBuilder(context, AppDatabase::class.java, TEST_DB).build()
+        val record = database.recordDao().getAll().single()
+        assertEquals(55_000L, record.holdDurationMillis)
+        assertEquals(0L, record.firstDiscomfortMillis)
+        assertEquals(0L, record.actualRecoveryDurationMillis)
+        assertEquals("", record.stopReason)
+        database.close()
+    }
+
     private companion object { const val TEST_DB = "migration-3-4-test" }
 }

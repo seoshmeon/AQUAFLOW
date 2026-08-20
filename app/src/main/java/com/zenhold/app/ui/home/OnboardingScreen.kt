@@ -87,7 +87,7 @@ fun OnboardingScreen(onComplete: () -> Unit, modifier: Modifier = Modifier) {
                     1 -> IntroCard(
                         icon = Icons.Rounded.VisibilityOff,
                         title = "Во время задержки — без цифр",
-                        body = "Таймер работает скрыто. Завершите подход двойным тапом по выделенной зоне — результат появится только во время восстановления.",
+                        body = "Таймер работает скрыто. Громкость + отмечает первый позыв, громкость − или двойной тап завершает подход. Результат появится только во время восстановления.",
                     )
                     else -> SafetyConsent(accepted = accepted, onAccepted = { accepted = it })
                 }

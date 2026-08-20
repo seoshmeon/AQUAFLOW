@@ -54,7 +54,8 @@ class DataBackupManager @Inject constructor(
         val allRecords = records.getAll()
         context.contentResolver.openOutputStream(uri, "wt")?.bufferedWriter()?.use { writer ->
             writer.appendLine(
-                "id,timestamp,session_id,attempt,hold_ms,recovery_ms,comfort,energy,stress,note",
+                "id,timestamp,session_id,attempt,hold_ms,planned_recovery_ms,actual_recovery_ms," +
+                    "first_discomfort_ms,comfort,stop_reason,energy,stress,note",
             )
             allRecords.forEach { record ->
                 writer.appendLine(
@@ -65,7 +66,10 @@ class DataBackupManager @Inject constructor(
                         record.attemptNumber,
                         record.holdDurationMillis,
                         record.recoveryDurationMillis,
+                        record.actualRecoveryDurationMillis,
+                        record.firstDiscomfortMillis,
                         record.comfortRating,
+                        record.stopReason,
                         record.energyLevel,
                         record.stressLevel,
                         record.sessionNote,
@@ -136,6 +140,8 @@ class DataBackupManager @Inject constructor(
         .put("preparationDurationMillis", preparationDurationMillis)
         .put("recoveryDurationMillis", recoveryDurationMillis)
         .put("energyLevel", energyLevel).put("stressLevel", stressLevel)
+        .put("sleepQuality", sleepQuality).put("program", program)
+        .put("readinessLevel", readinessLevel)
         .put("status", status).put("interruptionReason", interruptionReason).put("note", note)
 
     private fun BreathHoldRecord.toJson() = JSONObject()
@@ -144,6 +150,9 @@ class DataBackupManager @Inject constructor(
         .put("sessionId", sessionId).put("attemptNumber", attemptNumber)
         .put("comfortRating", comfortRating).put("energyLevel", energyLevel)
         .put("stressLevel", stressLevel).put("sessionNote", sessionNote)
+        .put("firstDiscomfortMillis", firstDiscomfortMillis)
+        .put("actualRecoveryDurationMillis", actualRecoveryDurationMillis)
+        .put("stopReason", stopReason)
 
     private fun JSONArray.toSessions() = buildList {
         repeat(length()) { index ->
@@ -162,6 +171,9 @@ class DataBackupManager @Inject constructor(
                     status = value.optString("status", TrainingSessionEntity.STATUS_COMPLETED).requireSessionStatus(),
                     interruptionReason = value.optString("interruptionReason").take(500),
                     note = value.optString("note").take(500),
+                    sleepQuality = value.optInt("sleepQuality", 3).coerceIn(1, 5),
+                    program = value.optString("program", "ADAPTIVE").take(30),
+                    readinessLevel = value.optString("readinessLevel", "OPTIMAL").take(30),
                 ),
             )
         }
@@ -182,6 +194,11 @@ class DataBackupManager @Inject constructor(
                     energyLevel = value.optInt("energyLevel", 3).coerceIn(1, 5),
                     stressLevel = value.optInt("stressLevel", 2).coerceIn(1, 5),
                     sessionNote = value.optString("sessionNote").take(500),
+                    firstDiscomfortMillis = value.optLong("firstDiscomfortMillis", 0L)
+                        .coerceIn(0L, MAX_DURATION_MILLIS),
+                    actualRecoveryDurationMillis = value.optLong("actualRecoveryDurationMillis", 0L)
+                        .coerceIn(0L, 600_000L),
+                    stopReason = value.optString("stopReason").take(50),
                 ),
             )
         }

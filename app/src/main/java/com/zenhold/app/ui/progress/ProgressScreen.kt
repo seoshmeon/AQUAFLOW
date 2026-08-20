@@ -118,6 +118,37 @@ fun ProgressScreen(
                 )
             }
         }
+        if (state.firstDiscomfortAverageMillis > 0L || state.actualRecoveryAverageMillis > 0L ||
+            state.stabilityPercent > 0
+        ) {
+            Spacer(Modifier.height(16.dp))
+            NeumorphicPanel(Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp)) {
+                Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Качество практики", fontWeight = FontWeight.SemiBold)
+                    Text(
+                        "Показатели спокойного прогресса, а не только максимального времени",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 13.sp,
+                    )
+                    CoachMetricRow(
+                        "Первый позыв",
+                        if (state.firstDiscomfortAverageMillis > 0L) {
+                            formatDuration(state.firstDiscomfortAverageMillis)
+                        } else "—",
+                    )
+                    CoachMetricRow(
+                        "Фактическое восстановление",
+                        if (state.actualRecoveryAverageMillis > 0L) {
+                            formatDuration(state.actualRecoveryAverageMillis)
+                        } else "—",
+                    )
+                    CoachMetricRow(
+                        "Стабильность серий",
+                        if (state.stabilityPercent > 0) "${state.stabilityPercent}%" else "—",
+                    )
+                }
+            }
+        }
         Spacer(Modifier.height(16.dp))
         NeumorphicPanel(
             modifier = Modifier.fillMaxWidth(),
@@ -239,6 +270,14 @@ fun ProgressScreen(
         Text("${state.sessions.size} из 20 тренировок", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(24.dp))
       }
+    }
+}
+
+@Composable
+private fun CoachMetricRow(label: String, value: String) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(value, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
     }
 }
 

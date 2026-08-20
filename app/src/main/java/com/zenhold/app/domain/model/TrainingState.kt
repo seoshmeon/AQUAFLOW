@@ -19,6 +19,7 @@ sealed interface TrainingState {
         val totalAttempts: Int,
         val fullScreenGesture: Boolean,
         val gestureEnabled: Boolean,
+        val firstDiscomfortMarked: Boolean = false,
     ) : TrainingState
 
     data class Recovering(
@@ -28,10 +29,13 @@ sealed interface TrainingState {
         val completedAttempt: Int,
         val totalAttempts: Int,
         val comfortRating: ComfortRating? = null,
+        val stopReason: RecoveryStopReason? = null,
     ) : TrainingState
 
     data class Finished(
         val resultsMillis: List<Long>,
+        val coachMessage: String = "",
+        val nextSessionAdvice: String = "",
     ) : TrainingState
 
     data class Interrupted(

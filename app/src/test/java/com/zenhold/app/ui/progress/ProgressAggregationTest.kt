@@ -1,6 +1,7 @@
 package com.zenhold.app.ui.progress
 
 import com.zenhold.app.data.local.BreathHoldRecord
+import com.zenhold.app.data.local.TrainingSessionEntity
 import java.time.LocalDateTime
 import java.time.ZoneId
 import org.junit.Assert.assertEquals
@@ -68,6 +69,52 @@ class ProgressAggregationTest {
 
         assertEquals("Спокойно", state.sessionSummaries.single().note)
         assertTrue(state.achievements.first { it.title == "Ровное дыхание" }.unlocked)
+    }
+
+    @Test
+    fun coachMetrics_useFirstUrgeActualRecoveryAndSeriesStability() {
+        val records = listOf(
+            record(60_000L, "session", 1, 2026, 8, 12).copy(
+                firstDiscomfortMillis = 40_000L,
+                actualRecoveryDurationMillis = 70_000L,
+            ),
+            record(66_000L, "session", 2, 2026, 8, 12).copy(
+                firstDiscomfortMillis = 50_000L,
+                actualRecoveryDurationMillis = 90_000L,
+            ),
+        )
+
+        val state = buildProgressState(records)
+
+        assertEquals(45_000L, state.firstDiscomfortAverageMillis)
+        assertEquals(80_000L, state.actualRecoveryAverageMillis)
+        assertTrue(state.stabilityPercent >= 90)
+    }
+
+    @Test
+    fun weeklyCoachPlan_recommendsRecoveryAfterRepeatedHardAttempts() {
+        val now = LocalDateTime.of(2026, 8, 16, 12, 0)
+            .atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        val records = listOf(
+            record(60_000L, "one", 1, 2026, 8, 15).copy(comfortRating = 4),
+            record(62_000L, "two", 1, 2026, 8, 16).copy(comfortRating = 4),
+        )
+        val sessions = records.map {
+            TrainingSessionEntity(
+                sessionId = it.sessionId,
+                startedAt = it.timestamp,
+                plannedAttempts = 1,
+                preparationDurationMillis = 30_000L,
+                recoveryDurationMillis = 120_000L,
+                energyLevel = 3,
+                stressLevel = 2,
+                status = TrainingSessionEntity.STATUS_COMPLETED,
+            )
+        }
+
+        val plan = buildWeeklyCoachPlan(records, sessions, now)
+
+        assertEquals("Восстановление", plan.programLabel)
     }
 
     private fun record(

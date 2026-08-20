@@ -61,6 +61,8 @@ fun SafetyScreen(modifier: Modifier = Modifier) {
             SafetyRule(Icons.Rounded.NoCrash, "Не используйте за рулём", "Также остановите тренировку при входящем звонке или другом отвлекающем событии.")
             Spacer(Modifier.height(14.dp))
             SafetyRule(Icons.Rounded.WarningAmber, "Без гипервентиляции", "Дышите естественно. Частое глубокое дыхание перед задержкой повышает риск потери сознания.")
+            Spacer(Modifier.height(14.dp))
+            SafetyRule(Icons.Rounded.HealthAndSafety, "Датчики не дают гарантии", "Пульс и SpO₂ с часов или телефона нельзя использовать как разрешение продолжать задержку.")
             Spacer(Modifier.height(24.dp))
             NeumorphicPanel(Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp), elevation = 8.dp) {
                 Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {

@@ -19,6 +19,9 @@ data class TrainingSessionEntity(
     @ColumnInfo(defaultValue = "'ACTIVE'") val status: String = STATUS_ACTIVE,
     @ColumnInfo(defaultValue = "''") val interruptionReason: String = "",
     @ColumnInfo(defaultValue = "''") val note: String = "",
+    @ColumnInfo(defaultValue = "3") val sleepQuality: Int = 3,
+    @ColumnInfo(defaultValue = "'ADAPTIVE'") val program: String = "ADAPTIVE",
+    @ColumnInfo(defaultValue = "'OPTIMAL'") val readinessLevel: String = "OPTIMAL",
 ) {
     companion object {
         const val STATUS_ACTIVE = "ACTIVE"
