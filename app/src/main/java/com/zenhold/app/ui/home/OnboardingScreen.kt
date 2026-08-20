@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -18,6 +19,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -39,6 +43,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -53,16 +58,21 @@ fun OnboardingScreen(onComplete: () -> Unit, modifier: Modifier = Modifier) {
     BackHandler(enabled = page > 0) { page-- }
 
     BoxWithConstraints(modifier.fillMaxSize()) {
+        val compactLayout = maxHeight < 720.dp
         Column(
             Modifier.align(Alignment.Center)
-                .fillMaxWidth()
+                .fillMaxHeight()
                 .widthIn(max = 620.dp)
+                .fillMaxWidth()
                 .safeDrawingPadding()
-                .padding(horizontal = if (maxWidth < 360.dp) 16.dp else 24.dp, vertical = 24.dp),
+                .padding(
+                    horizontal = if (maxWidth < 360.dp) 16.dp else 24.dp,
+                    vertical = if (compactLayout) 12.dp else 24.dp,
+                ),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text("AQUAFLOW", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-            Spacer(Modifier.height(18.dp))
+            Spacer(Modifier.height(if (compactLayout) 10.dp else 18.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 repeat(3) { index ->
                     Box(
@@ -76,8 +86,13 @@ fun OnboardingScreen(onComplete: () -> Unit, modifier: Modifier = Modifier) {
                     )
                 }
             }
-            Spacer(Modifier.height(28.dp))
-            AnimatedContent(targetState = page, label = "onboarding") { current ->
+            Spacer(Modifier.height(if (compactLayout) 16.dp else 28.dp))
+            AnimatedContent(
+                targetState = page,
+                modifier = Modifier.fillMaxWidth().weight(1f),
+                contentAlignment = Alignment.Center,
+                label = "onboarding",
+            ) { current ->
                 when (current) {
                     0 -> IntroCard(
                         icon = Icons.Rounded.Air,
@@ -92,11 +107,11 @@ fun OnboardingScreen(onComplete: () -> Unit, modifier: Modifier = Modifier) {
                     else -> SafetyConsent(accepted = accepted, onAccepted = { accepted = it })
                 }
             }
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(if (compactLayout) 12.dp else 24.dp))
             NeoTactilePrimaryAction(
                 onClick = { if (page < 2) page++ else onComplete() },
                 enabled = page < 2 || accepted,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 62.dp)
+                modifier = Modifier.fillMaxWidth().heightIn(min = if (compactLayout) 56.dp else 62.dp)
                     .alpha(if (page < 2 || accepted) 1f else .48f),
             ) {
                 Text(
@@ -119,13 +134,13 @@ fun OnboardingScreen(onComplete: () -> Unit, modifier: Modifier = Modifier) {
 @Composable
 private fun IntroCard(icon: ImageVector, title: String, body: String) {
     NeumorphicPanel(
-        Modifier.fillMaxWidth().heightIn(min = 330.dp),
+        Modifier.fillMaxSize(),
         shape = RoundedCornerShape(32.dp),
         elevation = 13.dp,
         contentAlignment = Alignment.Center,
     ) {
         Column(
-            Modifier.padding(28.dp),
+            Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(28.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
@@ -142,16 +157,23 @@ private fun IntroCard(icon: ImageVector, title: String, body: String) {
 
 @Composable
 private fun SafetyConsent(accepted: Boolean, onAccepted: (Boolean) -> Unit) {
-    NeumorphicPanel(Modifier.fillMaxWidth(), shape = RoundedCornerShape(32.dp), elevation = 13.dp) {
-        Column(Modifier.padding(24.dp)) {
+    NeumorphicPanel(Modifier.fillMaxSize(), shape = RoundedCornerShape(32.dp), elevation = 13.dp) {
+        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(24.dp)) {
             Icon(Icons.Rounded.HealthAndSafety, null, Modifier.size(42.dp), tint = MaterialTheme.colorScheme.primary)
             Spacer(Modifier.height(18.dp))
             Text("Сначала безопасность", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.height(14.dp))
             Text("• Практикуйте только сидя или лёжа\n• Никогда не тренируйтесь в воде в одиночку\n• Не используйте приложение за рулём\n• Не гипервентилируйте перед задержкой", color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(18.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(checked = accepted, onCheckedChange = onAccepted)
+            Row(
+                Modifier.fillMaxWidth().toggleable(
+                    value = accepted,
+                    role = Role.Checkbox,
+                    onValueChange = onAccepted,
+                ),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Checkbox(checked = accepted, onCheckedChange = null)
                 Text("Я понимаю правила и прекращу подход при дискомфорте", Modifier.padding(start = 6.dp))
             }
         }
