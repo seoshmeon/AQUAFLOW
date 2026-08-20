@@ -59,7 +59,31 @@ class AquaflowCloudApi @Inject constructor() {
         token: String? = null,
         transform: (JSONObject) -> T,
     ): T = withContext(Dispatchers.IO) {
-        val connection = (URL(BuildConfig.AQUAFLOW_API_URL + path).openConnection() as HttpURLConnection).apply {
+        var lastNetworkError: IOException? = null
+        val origins = listOf(BuildConfig.AQUAFLOW_API_URL, BuildConfig.AQUAFLOW_API_FALLBACK_URL).distinct()
+        origins.forEach { origin ->
+            try {
+                return@withContext executeRequest(origin, path, body, token, transform)
+            } catch (error: CloudResponseException) {
+                throw error
+            } catch (error: IOException) {
+                lastNetworkError = error
+            }
+        }
+        throw IOException(
+            "Не удалось подключиться. Проверьте интернет или настройки DNS и попробуйте снова.",
+            lastNetworkError,
+        )
+    }
+
+    private fun <T> executeRequest(
+        origin: String,
+        path: String,
+        body: JSONObject,
+        token: String?,
+        transform: (JSONObject) -> T,
+    ): T {
+        val connection = (URL(origin + path).openConnection() as HttpURLConnection).apply {
             requestMethod = "POST"
             connectTimeout = 12_000
             readTimeout = 18_000
@@ -76,11 +100,16 @@ class AquaflowCloudApi @Inject constructor() {
             val response = responseText.takeIf { it.isNotBlank() }?.let(::JSONObject) ?: JSONObject()
             if (status !in 200..299) {
                 val reason = response.optString("error")
-                throw IOException(if (reason == "unauthorized") "Сеанс синхронизации недействителен" else "Сервер временно недоступен ($status)")
+                throw CloudResponseException(
+                    if (reason == "unauthorized") "Сеанс синхронизации недействителен"
+                    else "Сервер временно недоступен ($status)",
+                )
             }
-            transform(response)
+            return transform(response)
         } finally {
             connection.disconnect()
         }
     }
+
+    private class CloudResponseException(message: String) : IOException(message)
 }
