@@ -8,7 +8,7 @@ plugins {
     id("com.google.dagger.hilt.android")
 }
 
-val appVersionName = "2.1.0"
+val appVersionName = "2.2.0"
 val releasePropertiesFile = rootProject.file("keystore.properties")
 val releaseProperties = Properties().apply {
     if (releasePropertiesFile.exists()) releasePropertiesFile.inputStream().use(::load)
@@ -22,7 +22,7 @@ android {
         applicationId = "com.zenhold.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 12
+        versionCode = 13
         versionName = appVersionName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

@@ -57,6 +57,9 @@ class HomeViewModel @Inject constructor(
     fun setHoldingMusicEnabled(value: Boolean) =
         update(settings.value.copy(holdingMusicEnabled = value))
 
+    fun setVoiceGuidanceEnabled(value: Boolean) =
+        update(settings.value.copy(voiceGuidanceEnabled = value))
+
     fun setMusicVolumePercent(value: Int) =
         update(settings.value.copy(musicVolumePercent = value.coerceIn(0, 100)))
 
@@ -89,6 +92,11 @@ class HomeViewModel @Inject constructor(
 
     fun exportCsv(uri: Uri) = runDataAction {
         "CSV сохранён: ${dataBackupManager.exportCsv(uri)} подходов"
+    }
+
+    fun exportPdf(uri: Uri) = runDataAction {
+        val result = dataBackupManager.exportPdf(uri)
+        "PDF-отчёт сохранён: ${result.sessions} тренировок, ${result.records} подходов"
     }
 
     fun previewImport(uri: Uri) {

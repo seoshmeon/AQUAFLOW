@@ -6,6 +6,7 @@ data class TrainingSettings(
     val preparationDurationMillis: Long = 30_000L,
     val preparationMusicEnabled: Boolean = true,
     val holdingMusicEnabled: Boolean = true,
+    val voiceGuidanceEnabled: Boolean = false,
     val musicVolumePercent: Int = 20,
     val cueVolumePercent: Int = 70,
     val cueStyle: CueStyle = CueStyle.Bell,

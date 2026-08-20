@@ -16,5 +16,8 @@ interface TrainingAudioController {
     fun startHoldingMusic()
     fun stopHoldingMusic()
     suspend fun playTransitionCue()
+    fun speakPreparationGuidance()
+    fun speakRecoveryGuidance()
+    fun stopVoiceGuidance()
     fun release()
 }

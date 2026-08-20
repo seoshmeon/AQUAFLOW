@@ -8,10 +8,13 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.zenhold.app.data.backup.DataBackupManager
 import com.zenhold.app.data.backup.ImportMode
 import com.zenhold.app.data.local.AppDatabase
+import com.zenhold.app.data.local.BreathHoldRecord
+import com.zenhold.app.data.local.TrainingSessionEntity
 import java.io.File
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -39,6 +42,46 @@ class DataBackupManagerTest {
         manager.importJson(uri, ImportMode.Replace)
         assertEquals(1, database.trainingSessionDao().getAll().size)
         assertEquals(47_000L, database.recordDao().getAll().single().holdDurationMillis)
+    }
+
+    @Test
+    fun exportPdf_withTrainingData_createsReadablePdfDocument() = runBlocking {
+        database.trainingSessionDao().upsert(
+            TrainingSessionEntity(
+                sessionId = "pdf-session",
+                startedAt = 1_700_000_000_000L,
+                plannedAttempts = 1,
+                completedAttempts = 1,
+                preparationDurationMillis = 30_000L,
+                recoveryDurationMillis = 120_000L,
+                energyLevel = 4,
+                stressLevel = 2,
+                status = TrainingSessionEntity.STATUS_COMPLETED,
+            ),
+        )
+        database.recordDao().insert(
+            BreathHoldRecord(
+                holdDurationMillis = 65_000L,
+                recoveryDurationMillis = 120_000L,
+                timestamp = 1_700_000_010_000L,
+                sessionId = "pdf-session",
+                attemptNumber = 1,
+                comfortRating = 2,
+                firstDiscomfortMillis = 43_000L,
+                actualRecoveryDurationMillis = 88_000L,
+            ),
+        )
+        val pdfFile = File(context.cacheDir, "aquaflow-report-test.pdf")
+
+        val summary = manager.exportPdf(Uri.fromFile(pdfFile))
+        val bytes = pdfFile.readBytes()
+
+        assertEquals(1, summary.sessions)
+        assertEquals(1, summary.records)
+        assertTrue(bytes.size > 1_000)
+        assertEquals("%PDF", bytes.take(4).map { it.toInt().toChar() }.joinToString(""))
+        pdfFile.delete()
+        Unit
     }
 
     private companion object {

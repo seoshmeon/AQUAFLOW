@@ -60,6 +60,7 @@ fun SettingsScreen(
     onPreparationSecondsChanged: (Int) -> Unit,
     onPreparationMusicChanged: (Boolean) -> Unit,
     onHoldingMusicChanged: (Boolean) -> Unit,
+    onVoiceGuidanceChanged: (Boolean) -> Unit,
     onMusicVolumeChanged: (Int) -> Unit,
     onCueVolumeChanged: (Int) -> Unit,
     onCueStyleChanged: (CueStyle) -> Unit,
@@ -72,6 +73,7 @@ fun SettingsScreen(
     importPreview: BackupPreview?,
     onExportJson: (Uri) -> Unit,
     onExportCsv: (Uri) -> Unit,
+    onExportPdf: (Uri) -> Unit,
     onImportJson: (Uri) -> Unit,
     onConfirmImport: (ImportMode) -> Unit,
     onCancelImport: () -> Unit,
@@ -86,6 +88,9 @@ fun SettingsScreen(
     val exportCsv = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("text/csv"),
     ) { it?.let(onExportCsv) }
+    val exportPdf = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/pdf"),
+    ) { it?.let(onExportPdf) }
     val importJson = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument(),
     ) { it?.let(onImportJson) }
@@ -153,6 +158,13 @@ fun SettingsScreen(
                 onChecked = onHoldingMusicChanged,
             )
             Spacer(Modifier.height(16.dp))
+            PreferenceToggle(
+                title = "Голосовой тренер",
+                description = "Короткие спокойные подсказки только во время подготовки и восстановления",
+                checked = settings.voiceGuidanceEnabled,
+                onChecked = onVoiceGuidanceChanged,
+            )
+            Spacer(Modifier.height(16.dp))
             TrainingSettingSlider(
                 label = "Громкость музыки",
                 valueLabel = "${settings.musicVolumePercent}%",
@@ -200,6 +212,9 @@ fun SettingsScreen(
                 },
                 onExportCsv = {
                     exportCsv.launch("AQUAFLOW-progress-${LocalDate.now()}.csv")
+                },
+                onExportPdf = {
+                    exportPdf.launch("AQUAFLOW-report-${LocalDate.now()}.pdf")
                 },
                 onImportJson = { importJson.launch(arrayOf("application/json", "text/plain")) },
                 onClearData = { confirmClear = true },
@@ -326,6 +341,7 @@ private fun CueStyleSelector(selected: CueStyle, compact: Boolean, onSelected: (
 private fun DataManagementSection(
     onExportJson: () -> Unit,
     onExportCsv: () -> Unit,
+    onExportPdf: () -> Unit,
     onImportJson: () -> Unit,
     onClearData: () -> Unit,
 ) {
@@ -342,6 +358,7 @@ private fun DataManagementSection(
             )
             DataAction("Сохранить резервную копию JSON", onExportJson)
             DataAction("Экспортировать прогресс в CSV", onExportCsv)
+            DataAction("Создать PDF-отчёт для тренера", onExportPdf)
             DataAction("Восстановить из JSON", onImportJson)
             DataAction("Удалить историю и настройки", onClearData, destructive = true)
         }

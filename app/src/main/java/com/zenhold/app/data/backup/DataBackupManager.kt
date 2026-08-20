@@ -2,6 +2,10 @@ package com.zenhold.app.data.backup
 
 import android.content.Context
 import android.net.Uri
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.Typeface
+import android.graphics.pdf.PdfDocument
 import androidx.room.withTransaction
 import com.zenhold.app.data.local.AppDatabase
 import com.zenhold.app.data.local.BreathHoldRecord
@@ -10,6 +14,9 @@ import com.zenhold.app.data.local.TrainingSessionDao
 import com.zenhold.app.data.local.TrainingSessionEntity
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.IOException
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.Dispatchers
@@ -78,6 +85,119 @@ class DataBackupManager @Inject constructor(
             }
         } ?: throw IOException("Не удалось открыть файл для записи")
         allRecords.size
+    }
+
+    /** Creates a readable offline report that can be shared with a coach by the user. */
+    suspend fun exportPdf(uri: Uri): ImportSummary = withContext(Dispatchers.IO) {
+        val allRecords = records.getAll()
+        val allSessions = sessions.getAll()
+        val document = PdfDocument()
+        val regular = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.rgb(35, 48, 52)
+            typeface = Typeface.create("sans", Typeface.NORMAL)
+        }
+        val bold = Paint(regular).apply { typeface = Typeface.create("sans", Typeface.BOLD) }
+        var pageNumber = 0
+        var page: PdfDocument.Page? = null
+        var y = 0f
+
+        fun openPage() {
+            pageNumber++
+            page = document.startPage(PdfDocument.PageInfo.Builder(595, 842, pageNumber).create())
+            y = 54f
+            bold.textSize = 11f
+            bold.color = Color.rgb(74, 143, 136)
+            page!!.canvas.drawText("AQUAFLOW · отчёт прогресса", 42f, y, bold)
+            y += 26f
+        }
+
+        fun closePage() {
+            page?.let(document::finishPage)
+            page = null
+        }
+
+        fun drawLine(text: String, size: Float = 11f, isBold: Boolean = false, gap: Float = 18f) {
+            if (page == null) openPage()
+            if (y > 800f) {
+                closePage()
+                openPage()
+            }
+            val paint = if (isBold) bold else regular
+            paint.textSize = size
+            paint.color = Color.rgb(35, 48, 52)
+            page!!.canvas.drawText(text.take(92), 42f, y, paint)
+            y += gap
+        }
+
+        fun drawWrapped(text: String, size: Float = 10f) {
+            text.trim().split(Regex("\\s+")).fold(mutableListOf<String>()) { lines, word ->
+                val candidate = (lines.lastOrNull().orEmpty() + " " + word).trim()
+                if (candidate.length <= 78) {
+                    if (lines.isEmpty()) lines += candidate else lines[lines.lastIndex] = candidate
+                } else lines += word
+                lines
+            }.forEach { drawLine(it, size, gap = 15f) }
+        }
+
+        openPage()
+        val date = SimpleDateFormat("d MMMM yyyy, HH:mm", Locale.forLanguageTag("ru-RU"))
+            .format(Date())
+        drawLine("Сформирован: $date", 9f)
+        y += 8f
+        drawLine("Сводка", 18f, isBold = true, gap = 26f)
+        val best = allRecords.maxOfOrNull { it.holdDurationMillis } ?: 0L
+        val average = allRecords.takeIf { it.isNotEmpty() }
+            ?.map { it.holdDurationMillis }?.average()?.toLong() ?: 0L
+        val comfortable = allRecords.filter { it.comfortRating in 1..2 }
+        val firstUrges = allRecords.filter { it.firstDiscomfortMillis > 0L }
+        val recoveries = allRecords.filter { it.actualRecoveryDurationMillis > 0L }
+        drawLine("Тренировок: ${allSessions.size} · подходов: ${allRecords.size}")
+        drawLine("Лучший результат: ${pdfDuration(best)} · среднее: ${pdfDuration(average)}")
+        drawLine(
+            "Комфортное среднее: ${comfortable.averageDuration { it.holdDurationMillis }} · " +
+                "первый позыв: ${firstUrges.averageDuration { it.firstDiscomfortMillis }}",
+        )
+        drawLine("Фактическое восстановление: ${recoveries.averageDuration { it.actualRecoveryDurationMillis }}")
+        y += 12f
+        drawLine("Последние сессии", 18f, isBold = true, gap = 28f)
+        val recordsBySession = allRecords.groupBy { it.sessionId }
+        allSessions.sortedByDescending { it.startedAt }.take(100).forEach { session ->
+            val attempts = recordsBySession[session.sessionId].orEmpty()
+            val sessionDate = SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault())
+                .format(Date(session.startedAt))
+            val sessionAverage = attempts.takeIf { it.isNotEmpty() }
+                ?.map { it.holdDurationMillis }?.average()?.toLong() ?: 0L
+            drawLine(
+                "$sessionDate · ${attempts.size}/${session.plannedAttempts} подходов · " +
+                    "среднее ${pdfDuration(sessionAverage)}",
+                isBold = true,
+            )
+            drawLine(
+                "Программа ${session.program.lowercase()} · энергия ${session.energyLevel}/5 · " +
+                    "стресс ${session.stressLevel}/5 · сон ${session.sleepQuality}/5",
+                size = 9f,
+                gap = 15f,
+            )
+            attempts.forEach { attempt ->
+                drawLine(
+                    "  Подход ${attempt.attemptNumber}: ${pdfDuration(attempt.holdDurationMillis)} · " +
+                        "первый позыв ${pdfDurationOrDash(attempt.firstDiscomfortMillis)} · " +
+                        "восстановление ${pdfDurationOrDash(attempt.actualRecoveryDurationMillis)}",
+                    size = 9f,
+                    gap = 14f,
+                )
+            }
+            if (session.note.isNotBlank()) drawWrapped("Заметка: ${session.note}", 9f)
+            y += 8f
+        }
+        closePage()
+        try {
+            context.contentResolver.openOutputStream(uri, "w")?.use(document::writeTo)
+                ?: throw IOException("Не удалось открыть PDF для записи")
+        } finally {
+            document.close()
+        }
+        ImportSummary(allSessions.size, allRecords.size)
     }
 
     suspend fun previewJson(uri: Uri): BackupPreview = withContext(Dispatchers.IO) {
@@ -217,6 +337,16 @@ class DataBackupManager @Inject constructor(
     }
 
     private fun csvCell(value: String): String = "\"${value.replace("\"", "\"\"")}\""
+
+    private fun pdfDuration(value: Long): String {
+        val seconds = value.coerceAtLeast(0L) / 1_000L
+        return "${seconds / 60}:${(seconds % 60).toString().padStart(2, '0')}"
+    }
+
+    private fun pdfDurationOrDash(value: Long): String = if (value > 0L) pdfDuration(value) else "—"
+
+    private fun List<BreathHoldRecord>.averageDuration(selector: (BreathHoldRecord) -> Long): String =
+        if (isEmpty()) "—" else pdfDuration(map(selector).average().toLong())
 
     private companion object {
         const val FORMAT = "aquaflow-backup"

@@ -199,6 +199,28 @@ class BreathTrainingViewModelTest {
         viewModel.finishNow()
         runCurrent()
     }
+
+    @Test
+    fun voiceGuidance_runsOnlyAroundPreparationAndRecovery() = runTest(dispatcher) {
+        val audio = FakeAudioController()
+        val viewModel = BreathTrainingViewModel(
+            FakeRecordRepository(),
+            audio,
+            ElapsedRealtimeClock { testScheduler.currentTime },
+        )
+        viewModel.startTraining(
+            TrainingSettings(attemptCount = 1, recoveryDurationMillis = 30_000L, voiceGuidanceEnabled = true),
+        )
+        assertEquals(1, audio.preparationGuidanceCount)
+
+        advanceTimeBy(BreathTrainingViewModel.PREPARATION_MILLIS + 1_600L)
+        runCurrent()
+        viewModel.stopHolding()
+        runCurrent()
+
+        assertTrue(audio.stopVoiceCount >= 1)
+        assertEquals(1, audio.recoveryGuidanceCount)
+    }
 }
 
 private class FakeRecordRepository(initialSessions: List<TrainingSessionEntity> = emptyList()) : RecordRepository {
@@ -246,6 +268,9 @@ private class FakeRecordRepository(initialSessions: List<TrainingSessionEntity> 
 }
 
 private class FakeAudioController : TrainingAudioController {
+    var preparationGuidanceCount = 0
+    var recoveryGuidanceCount = 0
+    var stopVoiceCount = 0
     override fun configure(
         musicVolumePercent: Int,
         cueVolumePercent: Int,
@@ -258,5 +283,8 @@ private class FakeAudioController : TrainingAudioController {
     override fun startHoldingMusic() = Unit
     override fun stopHoldingMusic() = Unit
     override suspend fun playTransitionCue() = Unit
+    override fun speakPreparationGuidance() { preparationGuidanceCount++ }
+    override fun speakRecoveryGuidance() { recoveryGuidanceCount++ }
+    override fun stopVoiceGuidance() { stopVoiceCount++ }
     override fun release() = Unit
 }

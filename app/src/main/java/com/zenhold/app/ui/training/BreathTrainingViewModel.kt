@@ -199,6 +199,7 @@ class BreathTrainingViewModel @Inject constructor(
         if (settings.preparationMusicEnabled) {
             viewModelScope.launch { runCatching { audio.startPreparationMusic() } }
         }
+        if (settings.voiceGuidanceEnabled) audio.speakPreparationGuidance()
 
         timerJob = viewModelScope.launch {
             while (true) {
@@ -223,6 +224,7 @@ class BreathTrainingViewModel @Inject constructor(
     }
 
     private suspend fun beginHolding() {
+        audio.stopVoiceGuidance()
         audio.stopPreparationMusic()
         runCatching { audio.playTransitionCue() }
         if (settings.holdingMusicEnabled) runCatching { audio.startHoldingMusic() }
@@ -314,6 +316,7 @@ class BreathTrainingViewModel @Inject constructor(
         recoveryTotalMillis = settings.recoveryDurationMillis
         recoveryStartedAtMillis = clock.nowMillis()
         recoveryDeadlineMillis = clock.nowMillis() + recoveryTotalMillis
+        if (settings.voiceGuidanceEnabled) audio.speakRecoveryGuidance()
         _state.value = recoveryState(
             holdDuration,
             recoveryTotalMillis,
@@ -430,6 +433,7 @@ class BreathTrainingViewModel @Inject constructor(
         holdStartedAtMillis = null
         audio.stopPreparationMusic()
         audio.stopHoldingMusic()
+        audio.stopVoiceGuidance()
         if (stateBeforeFinish !is TrainingState.Idle &&
             stateBeforeFinish !is TrainingState.Finished &&
             stateBeforeFinish !is TrainingState.Interrupted
@@ -455,6 +459,7 @@ class BreathTrainingViewModel @Inject constructor(
         holdStartedAtMillis = null
         audio.stopPreparationMusic()
         audio.stopHoldingMusic()
+        audio.stopVoiceGuidance()
         finalizeSession(
             TrainingSessionEntity.STATUS_INTERRUPTED,
             "Приложение свёрнуто или тренировка прервана системой",
@@ -481,6 +486,7 @@ class BreathTrainingViewModel @Inject constructor(
         holdGuardJob?.cancel()
         audio.stopPreparationMusic()
         audio.stopHoldingMusic()
+        audio.stopVoiceGuidance()
         super.onCleared()
     }
 

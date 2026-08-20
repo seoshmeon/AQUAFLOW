@@ -30,6 +30,7 @@ class DataStoreSettingsRepository @Inject constructor(
         val preparation = longPreferencesKey("preparation_duration_ms")
         val preparationMusic = booleanPreferencesKey("preparation_music_enabled")
         val holdingMusic = booleanPreferencesKey("holding_music_enabled")
+        val voiceGuidance = booleanPreferencesKey("voice_guidance_enabled")
         val musicVolume = intPreferencesKey("music_volume_percent")
         val cueVolume = intPreferencesKey("cue_volume_percent")
         val cueStyle = stringPreferencesKey("cue_style")
@@ -51,6 +52,7 @@ class DataStoreSettingsRepository @Inject constructor(
                 ?: 30_000L,
             preparationMusicEnabled = values[Keys.preparationMusic] ?: true,
             holdingMusicEnabled = values[Keys.holdingMusic] ?: true,
+            voiceGuidanceEnabled = values[Keys.voiceGuidance] ?: false,
             musicVolumePercent = (values[Keys.musicVolume] ?: 20).coerceIn(0, 100),
             cueVolumePercent = (values[Keys.cueVolume] ?: 70).coerceIn(0, 100),
             cueStyle = values[Keys.cueStyle]
@@ -76,6 +78,7 @@ class DataStoreSettingsRepository @Inject constructor(
             values[Keys.preparation] = settings.preparationDurationMillis
             values[Keys.preparationMusic] = settings.preparationMusicEnabled
             values[Keys.holdingMusic] = settings.holdingMusicEnabled
+            values[Keys.voiceGuidance] = settings.voiceGuidanceEnabled
             values[Keys.musicVolume] = settings.musicVolumePercent
             values[Keys.cueVolume] = settings.cueVolumePercent
             values[Keys.cueStyle] = settings.cueStyle.name

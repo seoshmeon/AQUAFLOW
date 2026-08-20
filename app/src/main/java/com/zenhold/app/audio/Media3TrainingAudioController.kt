@@ -3,6 +3,7 @@ package com.zenhold.app.audio
 import android.content.Context
 import android.os.VibrationEffect
 import android.os.Vibrator
+import android.speech.tts.TextToSpeech
 import androidx.core.content.getSystemService
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
@@ -16,6 +17,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.BufferedOutputStream
 import java.io.File
 import java.io.FileOutputStream
+import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.PI
@@ -34,6 +36,9 @@ class Media3TrainingAudioController @Inject constructor(
     private var vibrationEnabled = true
     private var cueStyle = CueStyle.Bell
     private var vibrationStrength = VibrationStrength.Medium
+    private var textToSpeechReady = false
+    private var textToSpeech: TextToSpeech? = null
+    private var pendingSpeech: Pair<String, String>? = null
     private val musicPlayer = ExoPlayer.Builder(context).build().apply {
         repeatMode = Player.REPEAT_MODE_ONE
         volume = PREPARATION_MUSIC_VOLUME
@@ -44,6 +49,26 @@ class Media3TrainingAudioController @Inject constructor(
         volume = cueVolume
         // The cue should mix with (not steal focus from) the preparation player.
         setAudioAttributes(mediaAttributes(), false)
+    }
+
+    init {
+        textToSpeech = TextToSpeech(context) { status ->
+            textToSpeechReady = status == TextToSpeech.SUCCESS
+            if (textToSpeechReady) {
+                val russian = Locale.forLanguageTag("ru-RU")
+                val engine = textToSpeech ?: return@TextToSpeech
+                val languageResult = engine.setLanguage(russian)
+                if (languageResult == TextToSpeech.LANG_MISSING_DATA ||
+                    languageResult == TextToSpeech.LANG_NOT_SUPPORTED
+                ) engine.language = Locale.getDefault()
+                engine.setSpeechRate(0.86f)
+                engine.setPitch(0.96f)
+                pendingSpeech?.let { (text, utteranceId) ->
+                    engine.speak(text, TextToSpeech.QUEUE_FLUSH, null, utteranceId)
+                    pendingSpeech = null
+                }
+            }
+        }
     }
 
     override fun configure(
@@ -104,9 +129,35 @@ class Media3TrainingAudioController @Inject constructor(
         }
     }
 
+    override fun speakPreparationGuidance() {
+        speak("Устройтесь удобно. Расслабьте лицо, плечи и живот. Дышите естественно.", "preparation")
+    }
+
+    override fun speakRecoveryGuidance() {
+        speak("Спокойно вернитесь к дыханию. Не спешите начинать следующий подход.", "recovery")
+    }
+
+    override fun stopVoiceGuidance() {
+        pendingSpeech = null
+        textToSpeech?.stop()
+    }
+
     override fun release() {
+        textToSpeech?.stop()
+        textToSpeech?.shutdown()
+        textToSpeech = null
+        pendingSpeech = null
         musicPlayer.release()
         cuePlayer.release()
+    }
+
+    private fun speak(text: String, utteranceId: String) {
+        if (textToSpeechReady) {
+            textToSpeech?.speak(text, TextToSpeech.QUEUE_FLUSH, null, utteranceId)
+        } else {
+            // TTS initializes asynchronously; keep the first cue instead of silently losing it.
+            pendingSpeech = text to utteranceId
+        }
     }
 
     private fun mediaAttributes() = AudioAttributes.Builder()
