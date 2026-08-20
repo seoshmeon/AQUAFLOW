@@ -235,6 +235,7 @@ private class FakeRecordRepository(initialSessions: List<TrainingSessionEntity> 
         sessions.value.lastOrNull { it.status == TrainingSessionEntity.STATUS_ACTIVE }
     override suspend fun getSessionRecords(sessionId: String): List<BreathHoldRecord> =
         saved.filter { it.sessionId == sessionId }
+    override suspend fun getAllRecords(): List<BreathHoldRecord> = saved.toList()
     override suspend fun save(record: BreathHoldRecord): Long {
         saved += record
         records.value = saved.toList()

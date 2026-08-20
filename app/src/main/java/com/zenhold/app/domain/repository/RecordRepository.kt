@@ -9,6 +9,7 @@ interface RecordRepository {
     fun observeSessions(): Flow<List<TrainingSessionEntity>>
     suspend fun getActiveSession(): TrainingSessionEntity?
     suspend fun getSessionRecords(sessionId: String): List<BreathHoldRecord>
+    suspend fun getAllRecords(): List<BreathHoldRecord>
     suspend fun save(record: BreathHoldRecord): Long
     suspend fun updateComfort(recordId: Long, rating: Int)
     suspend fun updateFeedback(recordId: Long, rating: Int, reason: String)

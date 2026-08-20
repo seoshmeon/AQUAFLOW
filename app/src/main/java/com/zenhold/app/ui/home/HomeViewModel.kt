@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import com.zenhold.app.data.backup.DataBackupManager
 import com.zenhold.app.data.backup.BackupPreview
 import com.zenhold.app.data.backup.ImportMode
+import com.zenhold.app.data.cloud.CloudSyncRepository
+import com.zenhold.app.data.cloud.CloudSyncState
 import com.zenhold.app.domain.model.TrainingSettings
 import com.zenhold.app.domain.model.AppThemeMode
 import com.zenhold.app.domain.model.CueStyle
@@ -24,11 +26,13 @@ import kotlinx.coroutines.launch
 class HomeViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val dataBackupManager: DataBackupManager,
+    private val cloudSyncRepository: CloudSyncRepository,
 ) : ViewModel() {
     private val _dataMessage = MutableStateFlow<String?>(null)
     val dataMessage = _dataMessage.asStateFlow()
     private val _importPreview = MutableStateFlow<BackupPreview?>(null)
     val importPreview = _importPreview.asStateFlow()
+    val cloudSyncState: StateFlow<CloudSyncState> = cloudSyncRepository.state
     private var pendingImportUri: Uri? = null
 
     val settings: StateFlow<TrainingSettings> = settingsRepository.settings.stateIn(
@@ -84,6 +88,20 @@ class HomeViewModel @Inject constructor(
 
     fun completeOnboarding() = update(settings.value.copy(onboardingCompleted = true))
     fun restartOnboarding() = update(settings.value.copy(onboardingCompleted = false))
+
+    fun createTelegramLinkCode() {
+        viewModelScope.launch { cloudSyncRepository.createLinkCode() }
+    }
+
+    fun syncCloudNow() {
+        viewModelScope.launch { cloudSyncRepository.syncNow() }
+    }
+
+    fun refreshCloudStatus() {
+        viewModelScope.launch { cloudSyncRepository.refreshStatus() }
+    }
+
+    fun dismissCloudMessage() = cloudSyncRepository.dismissMessage()
 
     fun exportJson(uri: Uri) = runDataAction {
         val result = dataBackupManager.exportJson(uri)

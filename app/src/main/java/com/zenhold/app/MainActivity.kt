@@ -94,6 +94,7 @@ private fun ZenHoldApp(
     val settings by homeViewModel.settings.collectAsStateWithLifecycle()
     val dataMessage by homeViewModel.dataMessage.collectAsStateWithLifecycle()
     val importPreview by homeViewModel.importPreview.collectAsStateWithLifecycle()
+    val cloudSyncState by homeViewModel.cloudSyncState.collectAsStateWithLifecycle()
     val trainingState by trainingViewModel.state.collectAsStateWithLifecycle()
     val resumableSession by trainingViewModel.resumableSession.collectAsStateWithLifecycle()
     val progressState by progressViewModel.state.collectAsStateWithLifecycle()
@@ -199,6 +200,7 @@ private fun ZenHoldApp(
                     )
                     Destination.Settings -> SettingsScreen(
                         settings = settings,
+                        cloudSyncState = cloudSyncState,
                         onAttemptsChanged = homeViewModel::setAttemptCount,
                         onRecoverySecondsChanged = homeViewModel::setRecoverySeconds,
                         onPreparationSecondsChanged = homeViewModel::setPreparationSeconds,
@@ -224,6 +226,10 @@ private fun ZenHoldApp(
                         onClearData = homeViewModel::clearAllData,
                         onDismissDataMessage = homeViewModel::dismissDataMessage,
                         onRestartOnboarding = homeViewModel::restartOnboarding,
+                        onCreateTelegramCode = homeViewModel::createTelegramLinkCode,
+                        onSyncCloud = homeViewModel::syncCloudNow,
+                        onRefreshCloudStatus = homeViewModel::refreshCloudStatus,
+                        onDismissCloudMessage = homeViewModel::dismissCloudMessage,
                     )
                     Destination.SessionPlan -> PreTrainingScreen(
                         settings = settings,

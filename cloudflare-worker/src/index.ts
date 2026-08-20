@@ -26,6 +26,7 @@ export default {
       if (request.method === "POST" && url.pathname === "/v1/link/start") {
         return createLinkCode(request, env);
       }
+      if (request.method === "POST" && url.pathname === "/v1/link/status") return linkStatus(request, env);
       if (request.method === "POST" && url.pathname === "/v1/records/sync") return syncRecords(request, env);
       return json({error: "not_found"}, 404);
     } catch (error) {
@@ -77,6 +78,17 @@ async function createLinkCode(request: Request, env: Env): Promise<Response> {
   await env.DB.prepare("INSERT INTO link_codes (code_hash, user_id, expires_at) VALUES (?, ?, ?)")
     .bind(await sha256(code), userId, now + 10 * 60_000).run();
   return json({code, expiresInSeconds: 600}, 201);
+}
+
+async function linkStatus(request: Request, env: Env): Promise<Response> {
+  const userId = await authenticate(request, env);
+  const link = await env.DB.prepare("SELECT username, first_name FROM telegram_links WHERE user_id = ?")
+    .bind(userId).first<{username: string | null; first_name: string | null}>();
+  return json({
+    linked: link !== null,
+    telegramUsername: link?.username ?? null,
+    telegramFirstName: link?.first_name ?? null,
+  });
 }
 
 async function syncRecords(request: Request, env: Env): Promise<Response> {

@@ -1,5 +1,9 @@
 package com.zenhold.app.ui.home
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -20,6 +24,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -27,6 +32,7 @@ import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.Switch
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -34,6 +40,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -47,6 +54,7 @@ import com.zenhold.app.ui.components.NeumorphicAction
 import com.zenhold.app.ui.util.formatDuration
 import com.zenhold.app.data.backup.BackupPreview
 import com.zenhold.app.data.backup.ImportMode
+import com.zenhold.app.data.cloud.CloudSyncState
 import java.time.LocalDate
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -55,6 +63,7 @@ import java.util.Locale
 @Composable
 fun SettingsScreen(
     settings: TrainingSettings,
+    cloudSyncState: CloudSyncState,
     onAttemptsChanged: (Int) -> Unit,
     onRecoverySecondsChanged: (Int) -> Unit,
     onPreparationSecondsChanged: (Int) -> Unit,
@@ -80,8 +89,13 @@ fun SettingsScreen(
     onClearData: () -> Unit,
     onDismissDataMessage: () -> Unit,
     onRestartOnboarding: () -> Unit,
+    onCreateTelegramCode: () -> Unit,
+    onSyncCloud: () -> Unit,
+    onRefreshCloudStatus: () -> Unit,
+    onDismissCloudMessage: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    LaunchedEffect(Unit) { onRefreshCloudStatus() }
     val exportJson = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/json"),
     ) { it?.let(onExportJson) }
@@ -206,6 +220,15 @@ fun SettingsScreen(
                 onChecked = onFullScreenHoldGestureChanged,
             )
             Spacer(Modifier.height(32.dp))
+            TelegramSyncSection(
+                state = cloudSyncState,
+                compact = compact,
+                onCreateCode = onCreateTelegramCode,
+                onSync = onSyncCloud,
+                onRefresh = onRefreshCloudStatus,
+                onDismissMessage = onDismissCloudMessage,
+            )
+            Spacer(Modifier.height(32.dp))
             DataManagementSection(
                 onExportJson = {
                     exportJson.launch("AQUAFLOW-backup-${LocalDate.now()}.json")
@@ -272,6 +295,97 @@ fun SettingsScreen(
             },
             dismissButton = { TextButton(onClick = onCancelImport) { Text("Отмена") } },
         )
+    }
+}
+
+@Composable
+private fun TelegramSyncSection(
+    state: CloudSyncState,
+    compact: Boolean,
+    onCreateCode: () -> Unit,
+    onSync: () -> Unit,
+    onRefresh: () -> Unit,
+    onDismissMessage: () -> Unit,
+) {
+    val context = LocalContext.current
+    val validCode = state.linkCode?.takeIf { state.linkCodeExpiresAt > System.currentTimeMillis() }
+    Text("Telegram и синхронизация", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+    Spacer(Modifier.height(12.dp))
+    NeumorphicPanel(Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp), elevation = 9.dp) {
+        Column(
+            Modifier.fillMaxWidth().padding(if (compact) 16.dp else 20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                if (state.linked) "Telegram подключён${state.telegramName?.let { ": $it" }.orEmpty()}"
+                else "Личный кабинет, месячная статистика и резервная синхронизация",
+                modifier = Modifier.fillMaxWidth(),
+                fontWeight = FontWeight.Medium,
+                textAlign = TextAlign.Center,
+            )
+            Text(
+                "Подключение добровольное. Во время задержки приложение не использует сеть.",
+                modifier = Modifier.fillMaxWidth(),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+            if (state.isBusy) CircularProgressIndicator()
+            validCode?.let { code ->
+                Text("Одноразовый код", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    code,
+                    fontSize = if (compact) 25.sp else 30.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 3.sp,
+                    maxLines = 1,
+                )
+                Text(
+                    "Отправьте боту: /link $code",
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center,
+                )
+                val copyCommand = {
+                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                    clipboard.setPrimaryClip(ClipData.newPlainText("AQUAFLOW link command", "/link $code"))
+                }
+                val openBot = {
+                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/AquaFlowCoachBot")))
+                }
+                if (compact) {
+                    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        TelegramAction("Копировать команду", copyCommand, Modifier.fillMaxWidth())
+                        TelegramAction("Открыть бота", openBot, Modifier.fillMaxWidth())
+                    }
+                } else {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        TelegramAction("Копировать", copyCommand, Modifier.weight(1f))
+                        TelegramAction("Открыть бота", openBot, Modifier.weight(1f))
+                    }
+                }
+            }
+            if (!state.linked) {
+                DataAction(if (validCode == null) "Создать код подключения" else "Создать новый код", onCreateCode)
+            }
+            if (state.hasProfile) {
+                DataAction("Синхронизировать сейчас", onSync)
+                DataAction("Проверить подключение", onRefresh)
+            }
+            if (state.syncedRecords > 0) {
+                Text("В облаке: ${state.syncedRecords} подходов", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            state.message?.let { message ->
+                Text(message, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
+                TextButton(onClick = onDismissMessage) { Text("Скрыть") }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TelegramAction(label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    NeumorphicAction(onClick = onClick, modifier = modifier.heightIn(min = 52.dp)) {
+        Text(label, textAlign = TextAlign.Center)
     }
 }
 
