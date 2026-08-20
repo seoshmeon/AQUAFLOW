@@ -1,0 +1,17 @@
+{
+  "name": "aquaflow-cloudflare-worker",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "check": "npm run typecheck && npm test",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "5.20260820.1",
+    "typescript": "7.0.2",
+    "vitest": "4.1.11",
+    "wrangler": "4.124.0"
+  }
+}

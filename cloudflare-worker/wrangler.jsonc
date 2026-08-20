@@ -1,0 +1,15 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "aquaflow-bot",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-20",
+  "observability": { "enabled": true },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "aquaflow",
+      "database_id": "18f38436-2a2d-46cc-a073-b974abfc466f",
+      "migrations_dir": "migrations"
+    }
+  ]
+}

@@ -14,8 +14,12 @@ cloud/functions/node_modules/
 cloud/functions/lib/
 cloud/functions/.env
 cloud/.firebase/
+cloud/.firebaserc
 cloud/firebase-debug.log
 cloud/*-debug.log
+cloudflare-worker/node_modules/
+cloudflare-worker/.wrangler/
+cloudflare-worker/.dev.vars
 
 # Local visual QA evidence is useful during development but does not belong in releases.
 audit-*/
